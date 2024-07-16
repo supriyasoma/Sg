@@ -1,0 +1,54 @@
+import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { CatalogPageComponent } from './catalog-page.component';
+
+describe('CatalogPageComponent', () => {
+  let component: CatalogPageComponent;
+  let fixture: ComponentFixture<CatalogPageComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      declarations: [ CatalogPageComponent ]
+    })
+    .compileComponents();
+  });
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(CatalogPageComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create the component', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should initialize dataset lists correctly', () => {
+    expect(component.datasetGroup).toBeDefined();
+    expect(component.datasetName).toBeDefined();
+    expect(component.datasetSubName).toBeDefined();
+    expect(component.referentialsValuesList).toBeDefined();
+    expect(component.datasetList).toBeDefined();
+    expect(component.searchFilterDatasetList).toBeDefined();
+    expect(component.checkboxFilterDatasetList).toBeDefined();
+  });
+
+  it('should filter dataset list on search', () => {
+    // Simulate search input
+    const searchEvent = { target: { value: 'search term' } };
+    component.search(searchEvent);
+
+    // Assert that searchFilterDatasetList has been updated based on search term
+    expect(component.searchFilterDatasetList.length).toBeGreaterThan(0);
+    expect(component.datasetList.length).toBe(component.searchFilterDatasetList.length);
+  });
+
+  it('should handle group checked event', () => {
+    // Simulate group checked event
+    component.onGroupChecked(true);
+
+    // Assert that checkboxFilterDatasetList has been updated based on group checked event
+    expect(component.checkboxFilterDatasetList.length).toBeGreaterThan(0);
+  });
+
+  // Add more test cases for other methods and scenarios as needed
+});
