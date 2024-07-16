@@ -1,105 +1,180 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { AuditTrailComponent } from './audit-trail.component';
-import { AuthentificationService } from '../authentication/authentication-service';
-import { DatasetInfoservice } from './service';
-import { UploadService } from '/servicesunt';
+import { AuthentificationService } from '../authentication/authentification.service';
+import { DatasetInfoService } from '../service/dataset-info.service';
+import { UploadService } from '../service/upload.service';
+import { IUserSgConnect, IUserAuthorization, IUserPermission } from '../authentication/IUserSgConnect';
+import { of, throwError } from 'rxjs';
 
 describe('AuditTrailComponent', () => {
   let component: AuditTrailComponent;
   let fixture: ComponentFixture<AuditTrailComponent>;
-  let mockUploadService;
-  let mockDatasetInfoservice;
-  let mockAuthentificationService;
+  let authentificationService: jasmine.SpyObj<AuthentificationService>;
+  let datasetInfoService: jasmine.SpyObj<DatasetInfoService>;
+  let uploadService: jasmine.SpyObj<UploadService>;
 
-  beforeEach(() => {
-    mockUploadService = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
-    mockDatasetInfoservice = jasmine.createSpyObj('DatasetInfoservice', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
-    mockAuthentificationService = jasmine.createSpyObj('AuthentificationService', ['fetchUserinfo', 'hasUserPermission']);
+  beforeEach(async () => {
+    const authentificationServiceSpy = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
+    const datasetInfoServiceSpy = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
+    const uploadServiceSpy = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
 
-    TestBed.configureTestingModule({
+    await TestBed.configureTestingModule({
       declarations: [AuditTrailComponent],
       providers: [
-        { provide: UploadService, useValue: mockUploadService },
-        { provide: DatasetInfoservice, useValue: mockDatasetInfoservice },
-        { provide: AuthentificationService, useValue: mockAuthentificationService }
+        { provide: AuthentificationService, useValue: authentificationServiceSpy },
+        { provide: DatasetInfoService, useValue: datasetInfoServiceSpy },
+        { provide: UploadService, useValue: uploadServiceSpy }
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(AuditTrailComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
+    authentificationService = TestBed.inject(AuthentificationService) as jasmine.SpyObj<AuthentificationService>;
+    datasetInfoService = TestBed.inject(DatasetInfoService) as jasmine.SpyObj<DatasetInfoService>;
+    uploadService = TestBed.inject(UploadService) as jasmine.SpyObj<UploadService>;
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize correctly', () => {
-    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
-    component.ngOnInit();
-    expect(component.showSpinner).toBe(true);
-    expect(component.selectedDataset).toBe('dataset-id');
-  });
+  it('should initialize component on ngOnInit', fakeAsync(() => {
+    const referentialId = '12345';
+    const mockUserInfo: IUserSgConnect = {
+      name: 'Test User',
+      sub: 'test123',
+      is_sg_group_user: 'true',
+      origin_network: 'LAN'
+    };
+    const mockPermissions: IUserPermission[] = [
+      { name: 'read', constraints: ['view'] }
+    ];
+    const mockUserAuthorization: IUserAuthorization[] = [
+      { resource: 'resource1', resource_id: '123', permissions: mockPermissions }
+    ];
 
-  it('should fetch user info and call getAuditTrailData if user has permission', () => {
-    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
-    mockAuthentificationService.fetchUserinfo.and.returnValue(of({
-      name: 'John Doe',
-      sub: '123456',
-      is_sg_group_user: true,
-      origin_network: 'network',
-      user_authorization: 'admin'
+    datasetInfoService.currentReferentialId.and.returnValue(of(referentialId));
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      ...mockUserInfo,
+      user_authorization: mockUserAuthorization
     }));
-    mockAuthentificationService.hasUserPermission.and.returnValue(true);
 
-    component.ngOnInit();
-    expect(component.userInfo).toBeDefined();
-    expect(component.authentificationService.hasUserPermission).toHaveBeenCalledWith('admin');
+    fixture.detectChanges();
+    tick();
+
+    expect(component.showSpinner).toBeFalse();
+    expect(component.selectedDataset).toEqual(referentialId);
+    expect(component.userInfo).toEqual(mockUserInfo);
+    expect(component.auditTrailData).toEqual([]);
+    expect(component.version).toEqual([]);
+    expect(datasetInfoService.updateDatasetVersions).toHaveBeenCalledWith(component.version);
+  }));
+
+  it('should handle fetchUserInfo error', fakeAsync(() => {
+    datasetInfoService.currentReferentialId.and.returnValue(of('12345'));
+    authentificationService.fetchUserInfo.and.returnValue(throwError('Error'));
+
+    fixture.detectChanges();
+    tick();
+
+    expect(component.showSpinner).toBeFalse();
+    expect(component.userInfo).toBeUndefined();
+  }));
+
+  it('should call getAuditTrailData if user has permission', fakeAsync(() => {
+    const referentialId = '12345';
+    datasetInfoService.currentReferentialId.and.returnValue(of(referentialId));
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'Test User',
+      sub: 'test123',
+      is_sg_group_user: 'true',
+      origin_network: 'LAN',
+      user_authorization: [{ resource: 'resource1', resource_id: '123', permissions: [{ name: 'read', constraints: ['view'] }] }]
+    }));
+    authentificationService.hasUserPermission.and.returnValue(true);
+    spyOn(component, 'getAuditTrailData');
+
+    fixture.detectChanges();
+    tick();
+
     expect(component.getAuditTrailData).toHaveBeenCalled();
-  });
+  }));
 
-  it('should not fetch audit trail data if user does not have permission', () => {
-    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
-    mockAuthentificationService.fetchUserinfo.and.returnValue(of({
-      name: 'John Doe',
-      sub: '123456',
-      is_sg_group_user: false,
-      origin_network: 'network',
-      user_authorization: 'user'
+  it('should not call getAuditTrailData if user does not have permission', fakeAsync(() => {
+    const referentialId = '12345';
+    datasetInfoService.currentReferentialId.and.returnValue(of(referentialId));
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'Test User',
+      sub: 'test123',
+      is_sg_group_user: 'false', // Assuming user does not have SG group permissions
+      origin_network: 'LAN'
     }));
-    mockAuthentificationService.hasUserPermission.and.returnValue(false);
+    authentificationService.hasUserPermission.and.returnValue(false);
+    spyOn(component, 'getAuditTrailData');
 
-    component.ngOnInit();
+    fixture.detectChanges();
+    tick();
+
     expect(component.getAuditTrailData).not.toHaveBeenCalled();
-    expect(component.showSpinner).toBe(false);
-  });
+    expect(component.showSpinner).toBeFalse();
+  }));
 
-  it('should handle error while fetching user info', () => {
-    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
-    mockAuthentificationService.fetchUserinfo.and.returnValue(throwError('Error'));
+  it('should fetch audit trail data and update component variables', fakeAsync(() => {
+    const referentialId = '12345';
+    const mockAuditTrailData = [
+      { version: '1.0', date: '2023-07-15', author: 'user1', status: 'completed' },
+      { version: '1.1', date: '2023-07-16', author: 'user2', status: 'pending' }
+    ];
+    const mockResponse = {
+      length: mockAuditTrailData.length,
+      forEach: (callback: (value: any, index: number) => void) => {
+        mockAuditTrailData.forEach((value, index) => callback(value, index));
+      }
+    };
 
-    component.ngOnInit();
-    expect(component.showSpinner).toBe(false);
-  });
+    datasetInfoService.currentReferentialId.and.returnValue(of(referentialId));
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'Test User',
+      sub: 'test123',
+      is_sg_group_user: 'true',
+      origin_network: 'LAN',
+      user_authorization: [{ resource: 'resource1', resource_id: '123', permissions: [{ name: 'read', constraints: ['view'] }] }]
+    }));
+    uploadService.getAuditTrail.and.returnValue(of(mockResponse));
 
-  it('should handle audit trail data fetch success', () => {
-    mockUploadService.getAuditTrail.and.returnValue(of([{ version: 'v1', date: '2024-07-16', author: 'Jane Doe', status: 'Active' }]));
-    mockUploadService.mapHttpResponseToAuditDataSet.and.returnValue([{ version: 'v1', date: '2024-07-16', author: 'Jane Doe', status: 'Active' }]);
+    fixture.detectChanges();
+    tick();
 
-    component.selectedDataset = 'dataset-id';
-    component.getAuditTrailData();
+    expect(uploadService.getAuditTrail).toHaveBeenCalledWith(component.selectedDataset);
+    expect(component.auditTrailData.length).toBe(mockAuditTrailData.length);
+    expect(component.version).toEqual(mockAuditTrailData.map(data => data.version));
+    expect(datasetInfoService.updateDatasetVersions).toHaveBeenCalledWith(component.version);
 
-    expect(component.auditTrailData.length).toBe(1);
-    expect(component.version.length).toBe(1);
-    expect(mockDatasetInfoservice.updateDatasetVersions).toHaveBeenCalledWith(['v1']);
-  });
+    const latestIndex = component.version.findIndex(version => version === 'latest');
+    if (latestIndex !== -1) {
+      expect(datasetInfoService.updateUserName).toHaveBeenCalledWith(mockAuditTrailData[latestIndex].author);
+      expect(datasetInfoService.updateValidateDate).toHaveBeenCalledWith(mockAuditTrailData[latestIndex].datetrikurid);
+    } else {
+      expect(datasetInfoService.updateUserName).toHaveBeenCalledWith('');
+      expect(datasetInfoService.updateValidateDate).toHaveBeenCalledWith('');
+    }
+  }));
 
-  it('should handle error while fetching audit trail data', () => {
-    mockUploadService.getAuditTrail.and.returnValue(throwError('Error'));
+  it('should handle getAuditTrailData error', fakeAsync(() => {
+    const referentialId = '12345';
+    datasetInfoService.currentReferentialId.and.returnValue(of(referentialId));
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'Test User',
+      sub: 'test123',
+      is_sg_group_user: 'true',
+      origin_network: 'LAN',
+      user_authorization: [{ resource: 'resource1', resource_id: '123', permissions: [{ name: 'read', constraints: ['view'] }] }]
+    }));
+    uploadService.getAuditTrail.and.returnValue(throwError('Error'));
 
-    component.selectedDataset = 'dataset-id';
-    component.getAuditTrailData();
-    expect(component.showSpinner).toBe(false);
-  });
+    fixture.detectChanges();
+    tick();
+
+    expect(component.showSpinner).toBeFalse();
+  }));
 });
