@@ -1,0 +1,133 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ReactiveFormsModule } from '@angular/forms';
+import { of, throwError } from 'rxjs';
+import { AuthentificationService } from '../authentication/authentification-service';
+import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
+import { InformationService } from './information-tab.service';
+import { InformationTabComponent } from './information-tab.component';
+
+describe('InformationTabComponent', () => {
+  let component: InformationTabComponent;
+  let fixture: ComponentFixture<InformationTabComponent>;
+
+  let mockFormBuilder: any;
+  let mockDatasetInfoService: any;
+  let mockAuthentificationService: any;
+  let mockInformationService: any;
+
+  beforeEach(async () => {
+    mockFormBuilder = {
+      group: jasmine.createSpy('group').and.returnValue({
+        value: {},
+        controls: {
+          description: {},
+          lucidTablePath: {},
+          ownership: {},
+          datasetOwner: {},
+          datasetOwnerBackups: {},
+          datasetManager: {},
+          datasetManagerBackups: {}
+        }
+      }),
+      control: jasmine.createSpy('control')
+    };
+
+    mockDatasetInfoService = {
+      currentReferentialId: of('test-id')
+    };
+
+    mockAuthentificationService = {
+      fetchUserInfo: jasmine.createSpy('fetchUserInfo').and.returnValue(of({
+        name: 'test',
+        sub: 'test-sub',
+        is_sg_group_user: true,
+        origin_network: 'test-network',
+        user_authorization: 'test-authorization'
+      })),
+      hasUserPermission: jasmine.createSpy('hasUserPermission').and.returnValue(true)
+    };
+
+    mockInformationService = {
+      getReferentialInformation: jasmine.createSpy('getReferentialInformation').and.returnValue(of({
+        body: { response: {} }
+      })),
+      saveReferentialInformation: jasmine.createSpy('saveReferentialInformation').and.returnValue(of({}))
+    };
+
+    await TestBed.configureTestingModule({
+      declarations: [ InformationTabComponent ],
+      imports: [ ReactiveFormsModule ],
+      providers: [
+        { provide: AuthentificationService, useValue: mockAuthentificationService },
+        { provide: DatasetInfoService, useValue: mockDatasetInfoService },
+        { provide: InformationService, useValue: mockInformationService }
+      ]
+    })
+    .compileComponents();
+  });
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(InformationTabComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should initialize form on init', () => {
+    expect(component.formGroup).toBeTruthy();
+    expect(mockFormBuilder.group).toHaveBeenCalled();
+  });
+
+  it('should check user access on init', () => {
+    expect(mockAuthentificationService.fetchUserInfo).toHaveBeenCalled();
+    expect(mockAuthentificationService.hasUserPermission).toHaveBeenCalled();
+    expect(component.isAuthenticated).toBeFalse();
+  });
+
+  it('should handle error during user access check', () => {
+    mockAuthentificationService.fetchUserInfo.and.returnValue(throwError('error'));
+    component.ngOnInit();
+    expect(component.isAuthenticated).toBeTrue();
+  });
+
+  it('should load referential information on init', () => {
+    expect(mockInformationService.getReferentialInformation).toHaveBeenCalled();
+    expect(component.referentialInfo).toEqual({});
+  });
+
+  it('should handle error during referential information load', () => {
+    mockInformationService.getReferentialInformation.and.returnValue(throwError('error'));
+    component.ngOnInit();
+    expect(component.showSpinner).toBeFalse();
+  });
+
+  it('should set form controls values from referential information', () => {
+    expect(component.formGroup.controls.description.value).toEqual(component.referentialInfo.description);
+    expect(component.formGroup.controls.lucidTablePath.value).toEqual(component.referentialInfo.lucidTablePath);
+    // ... check other form controls similarly
+  });
+
+  it('should set isEditable to true when editInfo is called', () => {
+    component.editInfo();
+    expect(component.isEditable).toBeTrue();
+  });
+
+  it('should set isEditable to false when cancelInfo is called', () => {
+    component.cancelInfo();
+    expect(component.isEditable).toBeFalse();
+  });
+
+  it('should save referential information on submit', () => {
+    component.submitInfo();
+    expect(mockInformationService.saveReferentialInformation).toHaveBeenCalledWith(component.referentialInfo);
+  });
+
+  it('should handle error during referential information save', () => {
+    mockInformationService.saveReferentialInformation.and.returnValue(throwError('error'));
+    component.submitInfo();
+    expect(component.showSpinner).toBeFalse();
+  });
+});
