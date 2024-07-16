@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ReactiveFormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { of, throwError } from 'rxjs';
 import { AuthentificationService } from '../authentication/authentification-service';
 import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
@@ -16,50 +16,49 @@ describe('InformationTabComponent', () => {
   let mockInformationService: any;
 
   beforeEach(async () => {
-    mockFormBuilder = {
-      group: jasmine.createSpy('group').and.returnValue({
-        value: {},
-        controls: {
-          description: {},
-          lucidTablePath: {},
-          ownership: {},
-          datasetOwner: {},
-          datasetOwnerBackups: {},
-          datasetManager: {},
-          datasetManagerBackups: {}
-        }
-      }),
-      control: jasmine.createSpy('control')
-    };
+    mockFormBuilder = jasmine.createSpyObj('FormBuilder', ['group', 'control']);
+    mockFormBuilder.group.and.returnValue({
+      value: {},
+      controls: {
+        description: {},
+        lucidTablePath: {},
+        ownership: {},
+        datasetOwner: {},
+        datasetOwnerBackups: {},
+        datasetManager: {},
+        datasetManagerBackups: {}
+      }
+    });
 
-    mockDatasetInfoService = {
-      currentReferentialId: of('test-id')
-    };
+    mockDatasetInfoService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId']);
+    mockDatasetInfoService.currentReferentialId = of('test-id');
 
-    mockAuthentificationService = {
-      fetchUserInfo: jasmine.createSpy('fetchUserInfo').and.returnValue(of({
-        name: 'test',
-        sub: 'test-sub',
-        is_sg_group_user: true,
-        origin_network: 'test-network',
-        user_authorization: 'test-authorization'
-      })),
-      hasUserPermission: jasmine.createSpy('hasUserPermission').and.returnValue(true)
-    };
+    mockAuthentificationService = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
+    mockAuthentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'test',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'test-network',
+      user_authorization: 'test-authorization'
+    }));
+    mockAuthentificationService.hasUserPermission.and.returnValue(true);
 
-    mockInformationService = {
-      getReferentialInformation: jasmine.createSpy('getReferentialInformation').and.returnValue(of({
-        body: { response: {} }
-      })),
-      saveReferentialInformation: jasmine.createSpy('saveReferentialInformation').and.returnValue(of({}))
-    };
+    mockInformationService = jasmine.createSpyObj('InformationService', ['getReferentialInformation', 'saveReferentialInformation']);
+    mockInformationService.getReferentialInformation.and.returnValue(of({
+      body: { response: {
+        datasetOwnerBackups: ['owner1', 'owner2', null],
+        datasetManagerBackups: ['manager1', null, 'manager2']
+      }}
+    }));
+    mockInformationService.saveReferentialInformation.and.returnValue(of({}));
 
     await TestBed.configureTestingModule({
       declarations: [ InformationTabComponent ],
       imports: [ ReactiveFormsModule ],
       providers: [
-        { provide: AuthentificationService, useValue: mockAuthentificationService },
+        { provide: FormBuilder, useValue: mockFormBuilder },
         { provide: DatasetInfoService, useValue: mockDatasetInfoService },
+        { provide: AuthentificationService, useValue: mockAuthentificationService },
         { provide: InformationService, useValue: mockInformationService }
       ]
     })
@@ -82,6 +81,7 @@ describe('InformationTabComponent', () => {
   });
 
   it('should check user access on init', () => {
+    component.ngOnInit();
     expect(mockAuthentificationService.fetchUserInfo).toHaveBeenCalled();
     expect(mockAuthentificationService.hasUserPermission).toHaveBeenCalled();
     expect(component.isAuthenticated).toBeFalse();
@@ -94,8 +94,12 @@ describe('InformationTabComponent', () => {
   });
 
   it('should load referential information on init', () => {
+    component.ngOnInit();
     expect(mockInformationService.getReferentialInformation).toHaveBeenCalled();
-    expect(component.referentialInfo).toEqual({});
+    expect(component.referentialInfo).toEqual(jasmine.objectContaining({
+      datasetOwnerBackups: ['owner1', 'owner2'],
+      datasetManagerBackups: ['manager1', 'manager2']
+    }));
   });
 
   it('should handle error during referential information load', () => {
@@ -105,6 +109,8 @@ describe('InformationTabComponent', () => {
   });
 
   it('should set form controls values from referential information', () => {
+    component.ngOnInit();
+    fixture.detectChanges();
     expect(component.formGroup.controls.description.value).toEqual(component.referentialInfo.description);
     expect(component.formGroup.controls.lucidTablePath.value).toEqual(component.referentialInfo.lucidTablePath);
     // ... check other form controls similarly
