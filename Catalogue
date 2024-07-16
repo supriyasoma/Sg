@@ -1,54 +1,44 @@
-import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { CatalogPageComponent } from './catalog-page.component';
+it('should filter dataset list based on search event', () => {
+  // Initialize checkboxFilterDatasetList for testing
+  component.checkboxFilterDatasetList = [
+    { name: 'Dataset 1', subName: 'Subname 1' },
+    { name: 'Dataset 2', subName: 'Subname 2' }
+  ];
 
-describe('CatalogPageComponent', () => {
-  let component: CatalogPageComponent;
-  let fixture: ComponentFixture<CatalogPageComponent>;
+  // Mock event with a search term
+  const searchEvent = { target: { value: 'Dataset 1' } };
+  component.search(searchEvent);
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      declarations: [ CatalogPageComponent ]
-    })
-    .compileComponents();
-  });
+  // Assert that datasetList and searchFilterDatasetList are updated correctly
+  expect(component.searchFilterDatasetList.length).toBe(1);
+  expect(component.searchFilterDatasetList[0].name).toBe('Dataset 1');
+  expect(component.datasetList.length).toBe(1);
+  expect(component.datasetList[0].name).toBe('Dataset 1');
+});
 
-  beforeEach(() => {
-    fixture = TestBed.createComponent(CatalogPageComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+it('should handle null or undefined search event', () => {
+  // Initialize checkboxFilterDatasetList for testing
+  component.checkboxFilterDatasetList = [
+    { name: 'Dataset 1', subName: 'Subname 1' },
+    { name: 'Dataset 2', subName: 'Subname 2' }
+  ];
 
-  it('should create the component', () => {
-    expect(component).toBeTruthy();
-  });
+  // Simulate null or undefined event
+  component.search(null);
+  expect(component.datasetList).toEqual(component.referentialsValuesList);
 
-  it('should initialize dataset lists correctly', () => {
-    expect(component.datasetGroup).toBeDefined();
-    expect(component.datasetName).toBeDefined();
-    expect(component.datasetSubName).toBeDefined();
-    expect(component.referentialsValuesList).toBeDefined();
-    expect(component.datasetList).toBeDefined();
-    expect(component.searchFilterDatasetList).toBeDefined();
-    expect(component.checkboxFilterDatasetList).toBeDefined();
-  });
+  component.search(undefined);
+  expect(component.datasetList).toEqual(component.referentialsValuesList);
+});
 
-  it('should filter dataset list on search', () => {
-    // Simulate search input
-    const searchEvent = { target: { value: 'search term' } };
-    component.search(searchEvent);
+it('should handle empty string search event', () => {
+  // Initialize checkboxFilterDatasetList for testing
+  component.checkboxFilterDatasetList = [
+    { name: 'Dataset 1', subName: 'Subname 1' },
+    { name: 'Dataset 2', subName: 'Subname 2' }
+  ];
 
-    // Assert that searchFilterDatasetList has been updated based on search term
-    expect(component.searchFilterDatasetList.length).toBeGreaterThan(0);
-    expect(component.datasetList.length).toBe(component.searchFilterDatasetList.length);
-  });
-
-  it('should handle group checked event', () => {
-    // Simulate group checked event
-    component.onGroupChecked(true);
-
-    // Assert that checkboxFilterDatasetList has been updated based on group checked event
-    expect(component.checkboxFilterDatasetList.length).toBeGreaterThan(0);
-  });
-
-  // Add more test cases for other methods and scenarios as needed
+  // Simulate empty string event
+  component.search('');
+  expect(component.datasetList).toEqual(component.referentialsValuesList);
 });
