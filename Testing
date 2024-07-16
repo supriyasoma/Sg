@@ -52,9 +52,9 @@ describe('InformationTabComponent', () => {
           lucidTablePath: 'Test Path',
           ownership: 'Test Ownership',
           datasetOwner: 'Test Owner',
-          datasetOwnerBackups: ['owner1', 'owner2', null],
+          datasetOwnerBackups: ['owner1', 'owner2'],
           datasetManager: 'Test Manager',
-          datasetManagerBackups: ['manager1', null, 'manager2']
+          datasetManagerBackups: ['manager1', 'manager2']
         }
       }
     }));
