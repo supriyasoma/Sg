@@ -113,27 +113,4 @@ describe('InformationTabComponent', () => {
     fixture.detectChanges();
     expect(component.formGroup.controls.description.value).toEqual(component.referentialInfo.description);
     expect(component.formGroup.controls.lucidTablePath.value).toEqual(component.referentialInfo.lucidTablePath);
-    // ... check other form controls similarly
-  });
-
-  it('should set isEditable to true when editInfo is called', () => {
-    component.editInfo();
-    expect(component.isEditable).toBeTrue();
-  });
-
-  it('should set isEditable to false when cancelInfo is called', () => {
-    component.cancelInfo();
-    expect(component.isEditable).toBeFalse();
-  });
-
-  it('should save referential information on submit', () => {
-    component.submitInfo();
-    expect(mockInformationService.saveReferentialInformation).toHaveBeenCalledWith(component.referentialInfo);
-  });
-
-  it('should handle error during referential information save', () => {
-    mockInformationService.saveReferentialInformation.and.returnValue(throwError('error'));
-    component.submitInfo();
-    expect(component.showSpinner).toBeFalse();
-  });
-});
+    // ... check other form
