@@ -45,10 +45,18 @@ describe('InformationTabComponent', () => {
 
     mockInformationService = jasmine.createSpyObj('InformationService', ['getReferentialInformation', 'saveReferentialInformation']);
     mockInformationService.getReferentialInformation.and.returnValue(of({
-      body: { response: {
-        datasetOwnerBackups: ['owner1', 'owner2', null],
-        datasetManagerBackups: ['manager1', null, 'manager2']
-      }}
+      body: {
+        response: {
+          referentialId: 'test-id',
+          description: 'Test Description',
+          lucidTablePath: 'Test Path',
+          ownership: 'Test Ownership',
+          datasetOwner: 'Test Owner',
+          datasetOwnerBackups: ['owner1', 'owner2', null],
+          datasetManager: 'Test Manager',
+          datasetManagerBackups: ['manager1', null, 'manager2']
+        }
+      }
     }));
     mockInformationService.saveReferentialInformation.and.returnValue(of({}));
 
@@ -84,7 +92,7 @@ describe('InformationTabComponent', () => {
     component.ngOnInit();
     expect(mockAuthentificationService.fetchUserInfo).toHaveBeenCalled();
     expect(mockAuthentificationService.hasUserPermission).toHaveBeenCalled();
-    expect(component.isAuthenticated).toBeFalse();
+    expect(component.isAuthenticated).toBeTrue();
   });
 
   it('should handle error during user access check', () => {
@@ -97,7 +105,13 @@ describe('InformationTabComponent', () => {
     component.ngOnInit();
     expect(mockInformationService.getReferentialInformation).toHaveBeenCalled();
     expect(component.referentialInfo).toEqual(jasmine.objectContaining({
+      referentialId: 'test-id',
+      description: 'Test Description',
+      lucidTablePath: 'Test Path',
+      ownership: 'Test Ownership',
+      datasetOwner: 'Test Owner',
       datasetOwnerBackups: ['owner1', 'owner2'],
+      datasetManager: 'Test Manager',
       datasetManagerBackups: ['manager1', 'manager2']
     }));
   });
@@ -111,6 +125,44 @@ describe('InformationTabComponent', () => {
   it('should set form controls values from referential information', () => {
     component.ngOnInit();
     fixture.detectChanges();
-    expect(component.formGroup.controls.description.value).toEqual(component.referentialInfo.description);
-    expect(component.formGroup.controls.lucidTablePath.value).toEqual(component.referentialInfo.lucidTablePath);
-    // ... check other form
+    expect(component.formGroup.controls.description.value).toEqual('Test Description');
+    expect(component.formGroup.controls.lucidTablePath.value).toEqual('Test Path');
+    expect(component.formGroup.controls.ownership.value).toEqual('Test Ownership');
+    expect(component.formGroup.controls.datasetOwner.value).toEqual('Test Owner');
+    expect(component.formGroup.controls.datasetOwnerBackups.value).toEqual(['owner1', 'owner2']);
+    expect(component.formGroup.controls.datasetManager.value).toEqual('Test Manager');
+    expect(component.formGroup.controls.datasetManagerBackups.value).toEqual(['manager1', 'manager2']);
+  });
+
+  it('should submit form and update referential information', () => {
+    component.editInfo();
+    component.formGroup.setValue({
+      description: 'New Description',
+      lucidTablePath: 'New Path',
+      ownership: 'New Ownership',
+      datasetOwner: 'New Owner',
+      datasetOwnerBackups: ['New Owner Backup'],
+      datasetManager: 'New Manager',
+      datasetManagerBackups: ['New Manager Backup']
+    });
+
+    component.submitInfo();
+    expect(component.showSpinner).toBeTrue();
+    expect(mockInformationService.saveReferentialInformation).toHaveBeenCalledWith(jasmine.objectContaining({
+      referentialId: 'test-id',
+      description: 'New Description',
+      lucidTablePath: 'New Path',
+      ownership: 'New Ownership',
+      datasetOwner: 'New Owner',
+      datasetOwnerBackups: ['New Owner Backup'],
+      datasetManager: 'New Manager',
+      datasetManagerBackups: ['New Manager Backup']
+    }));
+  });
+
+  it('should cancel edit mode', () => {
+    component.editInfo();
+    component.cancelInfo();
+    expect(component.isEditable).toBeFalse();
+  });
+});
