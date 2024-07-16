@@ -1,80 +1,32 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
 import { of, throwError } from 'rxjs';
-import { AuthentificationService } from '../authentication/authentification-service';
-import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
-import { InformationService } from './information-tab.service';
-import { InformationTabComponent } from './information-tab.component';
+import { AuditTrailComponent } from './audit-trail.component';
+import { AuthentificationService } from '../authentication/authentication-service';
+import { DatasetInfoservice } from './service';
+import { UploadService } from '/servicesunt';
 
-describe('InformationTabComponent', () => {
-  let component: InformationTabComponent;
-  let fixture: ComponentFixture<InformationTabComponent>;
-
-  let mockFormBuilder: any;
-  let mockDatasetInfoService: any;
-  let mockAuthentificationService: any;
-  let mockInformationService: any;
-
-  beforeEach(async () => {
-    mockFormBuilder = jasmine.createSpyObj('FormBuilder', ['group', 'control']);
-    mockFormBuilder.group.and.returnValue({
-      value: {},
-      controls: {
-        description: {},
-        lucidTablePath: {},
-        ownership: {},
-        datasetOwner: {},
-        datasetOwnerBackups: {},
-        datasetManager: {},
-        datasetManagerBackups: {}
-      }
-    });
-
-    mockDatasetInfoService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId']);
-    mockDatasetInfoService.currentReferentialId = of('test-id');
-
-    mockAuthentificationService = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
-    mockAuthentificationService.fetchUserInfo.and.returnValue(of({
-      name: 'test',
-      sub: 'test-sub',
-      is_sg_group_user: true,
-      origin_network: 'test-network',
-      user_authorization: 'test-authorization'
-    }));
-    mockAuthentificationService.hasUserPermission.and.returnValue(true);
-
-    mockInformationService = jasmine.createSpyObj('InformationService', ['getReferentialInformation', 'saveReferentialInformation']);
-    mockInformationService.getReferentialInformation.and.returnValue(of({
-      body: {
-        response: {
-          referentialId: 'test-id',
-          description: 'Test Description',
-          lucidTablePath: 'Test Path',
-          ownership: 'Test Ownership',
-          datasetOwner: 'Test Owner',
-          datasetOwnerBackups: ['owner1', 'owner2'],
-          datasetManager: 'Test Manager',
-          datasetManagerBackups: ['manager1', 'manager2']
-        }
-      }
-    }));
-    mockInformationService.saveReferentialInformation.and.returnValue(of({}));
-
-    await TestBed.configureTestingModule({
-      declarations: [ InformationTabComponent ],
-      imports: [ ReactiveFormsModule ],
-      providers: [
-        { provide: FormBuilder, useValue: mockFormBuilder },
-        { provide: DatasetInfoService, useValue: mockDatasetInfoService },
-        { provide: AuthentificationService, useValue: mockAuthentificationService },
-        { provide: InformationService, useValue: mockInformationService }
-      ]
-    })
-    .compileComponents();
-  });
+describe('AuditTrailComponent', () => {
+  let component: AuditTrailComponent;
+  let fixture: ComponentFixture<AuditTrailComponent>;
+  let mockUploadService;
+  let mockDatasetInfoservice;
+  let mockAuthentificationService;
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(InformationTabComponent);
+    mockUploadService = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
+    mockDatasetInfoservice = jasmine.createSpyObj('DatasetInfoservice', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
+    mockAuthentificationService = jasmine.createSpyObj('AuthentificationService', ['fetchUserinfo', 'hasUserPermission']);
+
+    TestBed.configureTestingModule({
+      declarations: [AuditTrailComponent],
+      providers: [
+        { provide: UploadService, useValue: mockUploadService },
+        { provide: DatasetInfoservice, useValue: mockDatasetInfoservice },
+        { provide: AuthentificationService, useValue: mockAuthentificationService }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AuditTrailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
@@ -83,86 +35,71 @@ describe('InformationTabComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should initialize form on init', () => {
-    expect(component.formGroup).toBeTruthy();
-    expect(mockFormBuilder.group).toHaveBeenCalled();
+  it('should initialize correctly', () => {
+    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
+    component.ngOnInit();
+    expect(component.showSpinner).toBe(true);
+    expect(component.selectedDataset).toBe('dataset-id');
   });
 
-  it('should check user access on init', () => {
-    component.ngOnInit();
-    expect(mockAuthentificationService.fetchUserInfo).toHaveBeenCalled();
-    expect(mockAuthentificationService.hasUserPermission).toHaveBeenCalled();
-    expect(component.isAuthenticated).toBeTrue();
-  });
-
-  it('should handle error during user access check', () => {
-    mockAuthentificationService.fetchUserInfo.and.returnValue(throwError('error'));
-    component.ngOnInit();
-    expect(component.isAuthenticated).toBeTrue();
-  });
-
-  it('should load referential information on init', () => {
-    component.ngOnInit();
-    expect(mockInformationService.getReferentialInformation).toHaveBeenCalled();
-    expect(component.referentialInfo).toEqual(jasmine.objectContaining({
-      referentialId: 'test-id',
-      description: 'Test Description',
-      lucidTablePath: 'Test Path',
-      ownership: 'Test Ownership',
-      datasetOwner: 'Test Owner',
-      datasetOwnerBackups: ['owner1', 'owner2'],
-      datasetManager: 'Test Manager',
-      datasetManagerBackups: ['manager1', 'manager2']
+  it('should fetch user info and call getAuditTrailData if user has permission', () => {
+    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
+    mockAuthentificationService.fetchUserinfo.and.returnValue(of({
+      name: 'John Doe',
+      sub: '123456',
+      is_sg_group_user: true,
+      origin_network: 'network',
+      user_authorization: 'admin'
     }));
-  });
+    mockAuthentificationService.hasUserPermission.and.returnValue(true);
 
-  it('should handle error during referential information load', () => {
-    mockInformationService.getReferentialInformation.and.returnValue(throwError('error'));
     component.ngOnInit();
-    expect(component.showSpinner).toBeFalse();
+    expect(component.userInfo).toBeDefined();
+    expect(component.authentificationService.hasUserPermission).toHaveBeenCalledWith('admin');
+    expect(component.getAuditTrailData).toHaveBeenCalled();
   });
 
-  it('should set form controls values from referential information', () => {
-    component.ngOnInit();
-    fixture.detectChanges();
-    expect(component.formGroup.controls.description.value).toEqual('Test Description');
-    expect(component.formGroup.controls.lucidTablePath.value).toEqual('Test Path');
-    expect(component.formGroup.controls.ownership.value).toEqual('Test Ownership');
-    expect(component.formGroup.controls.datasetOwner.value).toEqual('Test Owner');
-    expect(component.formGroup.controls.datasetOwnerBackups.value).toEqual(['owner1', 'owner2']);
-    expect(component.formGroup.controls.datasetManager.value).toEqual('Test Manager');
-    expect(component.formGroup.controls.datasetManagerBackups.value).toEqual(['manager1', 'manager2']);
-  });
-
-  it('should submit form and update referential information', () => {
-    component.editInfo();
-    component.formGroup.setValue({
-      description: 'New Description',
-      lucidTablePath: 'New Path',
-      ownership: 'New Ownership',
-      datasetOwner: 'New Owner',
-      datasetOwnerBackups: ['New Owner Backup'],
-      datasetManager: 'New Manager',
-      datasetManagerBackups: ['New Manager Backup']
-    });
-
-    component.submitInfo();
-    expect(component.showSpinner).toBeTrue();
-    expect(mockInformationService.saveReferentialInformation).toHaveBeenCalledWith(jasmine.objectContaining({
-      referentialId: 'test-id',
-      description: 'New Description',
-      lucidTablePath: 'New Path',
-      ownership: 'New Ownership',
-      datasetOwner: 'New Owner',
-      datasetOwnerBackups: ['New Owner Backup'],
-      datasetManager: 'New Manager',
-      datasetManagerBackups: ['New Manager Backup']
+  it('should not fetch audit trail data if user does not have permission', () => {
+    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
+    mockAuthentificationService.fetchUserinfo.and.returnValue(of({
+      name: 'John Doe',
+      sub: '123456',
+      is_sg_group_user: false,
+      origin_network: 'network',
+      user_authorization: 'user'
     }));
+    mockAuthentificationService.hasUserPermission.and.returnValue(false);
+
+    component.ngOnInit();
+    expect(component.getAuditTrailData).not.toHaveBeenCalled();
+    expect(component.showSpinner).toBe(false);
   });
 
-  it('should cancel edit mode', () => {
-    component.editInfo();
-    component.cancelInfo();
-    expect(component.isEditable).toBeFalse();
+  it('should handle error while fetching user info', () => {
+    mockDatasetInfoservice.currentReferentialId = of('dataset-id');
+    mockAuthentificationService.fetchUserinfo.and.returnValue(throwError('Error'));
+
+    component.ngOnInit();
+    expect(component.showSpinner).toBe(false);
+  });
+
+  it('should handle audit trail data fetch success', () => {
+    mockUploadService.getAuditTrail.and.returnValue(of([{ version: 'v1', date: '2024-07-16', author: 'Jane Doe', status: 'Active' }]));
+    mockUploadService.mapHttpResponseToAuditDataSet.and.returnValue([{ version: 'v1', date: '2024-07-16', author: 'Jane Doe', status: 'Active' }]);
+
+    component.selectedDataset = 'dataset-id';
+    component.getAuditTrailData();
+
+    expect(component.auditTrailData.length).toBe(1);
+    expect(component.version.length).toBe(1);
+    expect(mockDatasetInfoservice.updateDatasetVersions).toHaveBeenCalledWith(['v1']);
+  });
+
+  it('should handle error while fetching audit trail data', () => {
+    mockUploadService.getAuditTrail.and.returnValue(throwError('Error'));
+
+    component.selectedDataset = 'dataset-id';
+    component.getAuditTrailData();
+    expect(component.showSpinner).toBe(false);
   });
 });
