@@ -1,6 +1,15 @@
 sendDatasetFileForVerification: jasmine.createSpy('sendDatasetFileForVerification').and.callFake((referentialId: string, referentialFile: File) => {
-    // Mock response data
-    const response: ApiCheckResponse = {
+    // Create FormData and mock HTTP headers
+    const formData = new FormData();
+    formData.append('referentialFile', referentialFile, referentialFile.name);
+
+    const httpHeaders = new HttpHeaders().set('Accept', 'application/json; charset=utf-8');
+
+    // Mock URI (adjust as per your environment setup)
+    const uri = `${environment.serviceBaseUrl}${this.verificationUri}/${referentialId}`;
+
+    // Simulate HTTP response
+    const mockResponse: ApiCheckResponse = {
       statusCode: 200,
       errorMessage: '',
       response: {
@@ -11,9 +20,8 @@ sendDatasetFileForVerification: jasmine.createSpy('sendDatasetFileForVerificatio
       }
     };
 
-    // Simulate HTTP response
     const httpResponse = new HttpResponse({
-      body: response,
+      body: mockResponse,
       status: 200
     });
 
