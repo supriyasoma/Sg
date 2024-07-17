@@ -1,44 +1,51 @@
-it('should filter dataset list based on search event', () => {
-  // Initialize checkboxFilterDatasetList for testing
-  component.checkboxFilterDatasetList = [
-    { name: 'Dataset 1', subName: 'Subname 1' },
-    { name: 'Dataset 2', subName: 'Subname 2' }
-  ];
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HeaderComponent } from './header.component';
+import { AuthentificationService } from '../authentication/authentification-service';
+import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
+import { of } from 'rxjs';
 
-  // Mock event with a search term
-  const searchEvent = { target: { value: 'Dataset 1' } };
-  component.search(searchEvent);
+describe('HeaderComponent', () => {
+  let component: HeaderComponent;
+  let fixture: ComponentFixture<HeaderComponent>;
+  let mockAuthService: jasmine.SpyObj<AuthentificationService>;
+  let mockDatasetService: jasmine.SpyObj<DatasetInfoService>;
 
-  // Assert that datasetList and searchFilterDatasetList are updated correctly
-  expect(component.searchFilterDatasetList.length).toBe(1);
-  expect(component.searchFilterDatasetList[0].name).toBe('Dataset 1');
-  expect(component.datasetList.length).toBe(1);
-  expect(component.datasetList[0].name).toBe('Dataset 1');
-});
+  beforeEach(async () => {
+    mockAuthService = jasmine.createSpyObj('AuthentificationService', ['fetchUserName']);
+    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', ['updateUserName']);
 
-it('should handle null or undefined search event', () => {
-  // Initialize checkboxFilterDatasetList for testing
-  component.checkboxFilterDatasetList = [
-    { name: 'Dataset 1', subName: 'Subname 1' },
-    { name: 'Dataset 2', subName: 'Subname 2' }
-  ];
+    await TestBed.configureTestingModule({
+      declarations: [ HeaderComponent ],
+      providers: [
+        { provide: AuthentificationService, useValue: mockAuthService },
+        { provide: DatasetInfoService, useValue: mockDatasetService }
+      ]
+    })
+    .compileComponents();
+  });
 
-  // Simulate null or undefined event
-  component.search(null);
-  expect(component.datasetList).toEqual(component.referentialsValuesList);
+  beforeEach(() => {
+    fixture = TestBed.createComponent(HeaderComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
 
-  component.search(undefined);
-  expect(component.datasetList).toEqual(component.referentialsValuesList);
-});
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 
-it('should handle empty string search event', () => {
-  // Initialize checkboxFilterDatasetList for testing
-  component.checkboxFilterDatasetList = [
-    { name: 'Dataset 1', subName: 'Subname 1' },
-    { name: 'Dataset 2', subName: 'Subname 2' }
-  ];
+  it('should fetch user name on init', () => {
+    const userName = 'TestUser';
+    mockAuthService.fetchUserName.and.returnValue(userName);
 
-  // Simulate empty string event
-  component.search('');
-  expect(component.datasetList).toEqual(component.referentialsValuesList);
+    component.ngOnInit();
+
+    expect(component.userName).toBe(userName);
+    expect(mockDatasetService.updateUserName).toHaveBeenCalledWith(userName);
+  });
+
+  it('should set signOut to true on onSignOut call', () => {
+    component.onSignOut();
+    expect(component.signOut).toBeTrue();
+  });
 });
