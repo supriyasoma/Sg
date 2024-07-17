@@ -4,6 +4,7 @@ import { AuthentificationService } from '../authentication/authentication-servic
 import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
 import { UploadService } from '../services/http/upload-service.service';
 import { of, throwError } from 'rxjs';
+import { HttpResponse } from '@angular/common/http';
 import { TUserSgConnect } from '../authentication/IUserSgConnect';
 
 describe('AuditTrailComponent', () => {
@@ -15,7 +16,7 @@ describe('AuditTrailComponent', () => {
 
   beforeEach(async () => {
     mockAuthService = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
-    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
+    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate', 'updateReferentialId']);
     mockUploadService = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
 
     await TestBed.configureTestingModule({
@@ -60,10 +61,14 @@ describe('AuditTrailComponent', () => {
       { version: '1.0', date: '2024-07-17', author: 'TestUser', status: 'Completed', dateInLucid: '2024-07-17' }
     ];
 
-    mockDatasetService.currentReferentialId = of('testDatasetId');
+    const mockHttpResponse = new HttpResponse({
+      body: mockAuditData
+    });
+
+    mockDatasetService.currentReferentialId.and.returnValue(of('testDatasetId'));
     mockAuthService.fetchUserInfo.and.returnValue(of(mockClaims));
     mockAuthService.hasUserPermission.and.returnValue(true);
-    mockUploadService.getAuditTrail.and.returnValue(of(mockAuditData));
+    mockUploadService.getAuditTrail.and.returnValue(of(mockHttpResponse));
     mockUploadService.mapHttpResponseToAuditDataSet.and.returnValue(mockAuditData);
 
     component.ngOnInit();
@@ -75,7 +80,7 @@ describe('AuditTrailComponent', () => {
   });
 
   it('should handle errors when fetching user info', () => {
-    mockDatasetService.currentReferentialId = of('testDatasetId');
+    mockDatasetService.currentReferentialId.and.returnValue(of('testDatasetId'));
     mockAuthService.fetchUserInfo.and.returnValue(throwError('Error fetching user info'));
 
     component.ngOnInit();
@@ -92,7 +97,7 @@ describe('AuditTrailComponent', () => {
       user_authorization: 'TestAuthorization'
     };
 
-    mockDatasetService.currentReferentialId = of('testDatasetId');
+    mockDatasetService.currentReferentialId.and.returnValue(of('testDatasetId'));
     mockAuthService.fetchUserInfo.and.returnValue(of(mockClaims));
     mockAuthService.hasUserPermission.and.returnValue(true);
     mockUploadService.getAuditTrail.and.returnValue(throwError('Error fetching audit trail data'));
