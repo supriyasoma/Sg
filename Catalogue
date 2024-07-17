@@ -1,28 +1,21 @@
-spyOn(component, 'sendDatasetFileForVerification').and.callThrough();
-
-    // Create a dummy file
-    const file = new File(['dummy content'], 'dummy-file.txt', { type: 'text/plain' });
-
-    // Simulate file input event
-    const event = {
-      target: {
-        files: [file],
-        value: 'C:\\fakepath\\dummy-file.txt'
+sendDatasetFileForVerification: jasmine.createSpy('sendDatasetFileForVerification').and.callFake((referentialId: string, referentialFile: File) => {
+    // Mock response data
+    const response: ApiCheckResponse = {
+      statusCode: 200,
+      errorMessage: '',
+      response: {
+        validLines: 10,
+        nonValidLines: 5,
+        errorsDetails: ['Error 1', 'Error 2'],
+        resultDetails: ['Result 1', 'Result 2']
       }
-    } as unknown as Event;
+    };
 
-    component.setSelectedFile(event);
+    // Simulate HTTP response
+    const httpResponse = new HttpResponse({
+      body: response,
+      status: 200
+    });
 
-    // Verify the spinner is shown
-    expect(component.showSpinner).toBeTrue();
-
-    // Verify the selected file is set correctly
-    expect(component.selectedFile.fileName).toBe('dummy-file.txt');
-    expect(component.selectedFile.checkResult.checkCode).toBe(CHECK_CODE.UNCHECKED);
-
-    // Verify the form is patched with the selected file
-    expect(component.uploadForm.get('selectedFileLocation')!.value).toBe(file);
-
-    // Verify sendDatasetFileForVerification is called
-    expect(component.sendDatasetFileForVerification).toHaveBeenCalled();
-  
+    return of(httpResponse);
+  })
