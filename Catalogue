@@ -1,31 +1,36 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HeaderComponent } from './header.component';
-import { AuthentificationService } from '../authentication/authentification-service';
+import { AuditTrailComponent } from './audit-trail.component';
+import { AuthentificationService } from '../authentication/authentication-service';
 import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
-import { of } from 'rxjs';
+import { UploadService } from '../services/http/upload-service.service';
+import { of, throwError } from 'rxjs';
+import { TUserSgConnect } from '../authentication/IUserSgConnect';
 
-describe('HeaderComponent', () => {
-  let component: HeaderComponent;
-  let fixture: ComponentFixture<HeaderComponent>;
+describe('AuditTrailComponent', () => {
+  let component: AuditTrailComponent;
+  let fixture: ComponentFixture<AuditTrailComponent>;
   let mockAuthService: jasmine.SpyObj<AuthentificationService>;
   let mockDatasetService: jasmine.SpyObj<DatasetInfoService>;
+  let mockUploadService: jasmine.SpyObj<UploadService>;
 
   beforeEach(async () => {
-    mockAuthService = jasmine.createSpyObj('AuthentificationService', ['fetchUserName']);
-    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', ['updateUserName']);
+    mockAuthService = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
+    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
+    mockUploadService = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
 
     await TestBed.configureTestingModule({
-      declarations: [ HeaderComponent ],
+      declarations: [ AuditTrailComponent ],
       providers: [
         { provide: AuthentificationService, useValue: mockAuthService },
-        { provide: DatasetInfoService, useValue: mockDatasetService }
+        { provide: DatasetInfoService, useValue: mockDatasetService },
+        { provide: UploadService, useValue: mockUploadService }
       ]
     })
     .compileComponents();
   });
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(HeaderComponent);
+    fixture = TestBed.createComponent(AuditTrailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
@@ -34,18 +39,66 @@ describe('HeaderComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should fetch user name on init', () => {
-    const userName = 'TestUser';
-    mockAuthService.fetchUserName.and.returnValue(userName);
+  it('should fetch user info and get audit trail data on init', () => {
+    const mockClaims = {
+      name: 'TestUser',
+      sub: '12345',
+      is_sg_group_user: true,
+      origin_network: 'TestNetwork',
+      user_authorization: 'TestAuthorization'
+    };
+
+    const mockUserInfo: TUserSgConnect = {
+      name: 'TestUser',
+      sub: '12345',
+      is_sg_group_user: true,
+      origin_network: 'TestNetwork',
+      user_authorization: 'TestAuthorization'
+    };
+
+    const mockAuditData = [
+      { version: '1.0', date: '2024-07-17', author: 'TestUser', status: 'Completed', dateInLucid: '2024-07-17' }
+    ];
+
+    mockDatasetService.currentReferentialId = of('testDatasetId');
+    mockAuthService.fetchUserInfo.and.returnValue(of(mockClaims));
+    mockAuthService.hasUserPermission.and.returnValue(true);
+    mockUploadService.getAuditTrail.and.returnValue(of(mockAuditData));
+    mockUploadService.mapHttpResponseToAuditDataSet.and.returnValue(mockAuditData);
 
     component.ngOnInit();
 
-    expect(component.userName).toBe(userName);
-    expect(mockDatasetService.updateUserName).toHaveBeenCalledWith(userName);
+    expect(component.selectedDataset).toBe('testDatasetId');
+    expect(component.userInfo).toEqual(mockUserInfo);
+    expect(component.auditTrailData).toEqual(mockAuditData);
+    expect(component.showSpinner).toBeFalse();
   });
 
-  it('should set signOut to true on onSignOut call', () => {
-    component.onSignOut();
-    expect(component.signOut).toBeTrue();
+  it('should handle errors when fetching user info', () => {
+    mockDatasetService.currentReferentialId = of('testDatasetId');
+    mockAuthService.fetchUserInfo.and.returnValue(throwError('Error fetching user info'));
+
+    component.ngOnInit();
+
+    expect(component.showSpinner).toBeFalse();
+  });
+
+  it('should handle errors when fetching audit trail data', () => {
+    const mockClaims = {
+      name: 'TestUser',
+      sub: '12345',
+      is_sg_group_user: true,
+      origin_network: 'TestNetwork',
+      user_authorization: 'TestAuthorization'
+    };
+
+    mockDatasetService.currentReferentialId = of('testDatasetId');
+    mockAuthService.fetchUserInfo.and.returnValue(of(mockClaims));
+    mockAuthService.hasUserPermission.and.returnValue(true);
+    mockUploadService.getAuditTrail.and.returnValue(throwError('Error fetching audit trail data'));
+
+    component.ngOnInit();
+
+    expect(component.showSpinner).toBeFalse();
   });
 });
