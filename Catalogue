@@ -1,17 +1,28 @@
-const uploadServiceStub = {
-    getAuditTrail: jasmine.createSpy('getAuditTrail').and.returnValue(of(new HttpResponse({ body: { response: [{ version: '1.0', date: '2022-01-01T00:00:00Z', author: 'Test Author', status: 'Completed', dateInLucid: '2022-01-01T00:00:00Z' }] }, status: 200 }))),
-    mapHttpResponseToAuditDataSet: jasmine.createSpy('mapHttpResponseToAuditDataSet').and.callFake((response: HttpResponse<any>) => {
-      if (response && response.ok) {
-        return response.body.response.map((data: any) => {
-          return {
-            version: data.version,
-            author: data.author,
-            date: data.date.replace("T", " ").substring(0, 19),
-            status: data.status,
-            dateInLucid: data.dateInLucid
-          };
-        });
+spyOn(component, 'sendDatasetFileForVerification').and.callThrough();
+
+    // Create a dummy file
+    const file = new File(['dummy content'], 'dummy-file.txt', { type: 'text/plain' });
+
+    // Simulate file input event
+    const event = {
+      target: {
+        files: [file],
+        value: 'C:\\fakepath\\dummy-file.txt'
       }
-      return [];
-    })
-  };
+    } as unknown as Event;
+
+    component.setSelectedFile(event);
+
+    // Verify the spinner is shown
+    expect(component.showSpinner).toBeTrue();
+
+    // Verify the selected file is set correctly
+    expect(component.selectedFile.fileName).toBe('dummy-file.txt');
+    expect(component.selectedFile.checkResult.checkCode).toBe(CHECK_CODE.UNCHECKED);
+
+    // Verify the form is patched with the selected file
+    expect(component.uploadForm.get('selectedFileLocation')!.value).toBe(file);
+
+    // Verify sendDatasetFileForVerification is called
+    expect(component.sendDatasetFileForVerification).toHaveBeenCalled();
+  
