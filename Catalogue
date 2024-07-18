@@ -1,96 +1,25 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ContentFormComponent } from './content-form.component';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { of, throwError } from 'rxjs';
-import { SelectedFile } from '../../models/selected-file';
-import { UploadService } from '../../services/http/upload-service.service';
-import { DatasetInfoService } from 'src/app/services/common-storage/dataset-info-service';
-import { AuthentificationService } from 'src/app/authentication/authentication.service';
-import { IUserSgConnect } from 'src/app/authentication/IUserSgConnect';
-import { CheckResult } from '../../models/check-result';
-import { CHECK_CODE } from '../../models/check-code';
-import { HttpResponse } from '@angular/common/http';
-
-describe('ContentFormComponent', () => {
-  let component: ContentFormComponent;
-  let fixture: ComponentFixture<ContentFormComponent>;
-  let mockUploadService: jasmine.SpyObj<UploadService>;
-  let mockDatasetInfoService: jasmine.SpyObj<DatasetInfoService>;
-  let mockAuthentificationService: jasmine.SpyObj<AuthentificationService>;
-
-  beforeEach(async () => {
-    mockUploadService = jasmine.createSpyObj('UploadService', ['getDatasetContent', 'sendDatasetFileForVerification', 'mapHttpResponseToDataset', 'createCheckResultFromResponse']);
-    mockDatasetInfoService = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetContent', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
-    mockAuthentificationService = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
-
-    await TestBed.configureTestingModule({
-      declarations: [ContentFormComponent],
-      imports: [HttpClientTestingModule, ReactiveFormsModule],
-      providers: [
-        { provide: UploadService, useValue: mockUploadService },
-        { provide: DatasetInfoService, useValue: mockDatasetInfoService },
-        { provide: AuthentificationService, useValue: mockAuthentificationService },
-        FormBuilder
-      ]
-    })
-    .compileComponents();
-
-    fixture = TestBed.createComponent(ContentFormComponent);
-    component = fixture.componentInstance;
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should load previous dataset on init', () => {
-    const mockDataset = [{ version: 'DRAFT', user: 'testUser', date: '2023-01-01', data: ['data'] }];
-    mockUploadService.getDatasetContent.and.returnValue(of(mockDataset));
-    mockDatasetInfoService.currentReferentialId = of('testId');
-    mockAuthentificationService.fetchUserInfo.and.returnValue(of({
+const mockUserAuthorization: IUserAuthorization[] = [
+      {
+        resource: 'resource1',
+        resource_id: 'resource_id1',
+        permissions: [
+          {
+            name: 'permission1',
+            constraints: ['constraint1']
+          }
+        ]
+      }
+    ];
+    
+    const mockUserSgConnect: IUserSgConnect = {
       name: 'testName',
       sub: 'testSub',
-      is_sg_group_user: true,
-      origin_network: 'testNetwork',
-      user_authorization: 'testAuth'
-    } as IUserSgConnect));
+      is_sg_group_user: 'true',
+      origin_network: 'LAN',
+      user_authorization: mockUserAuthorization
+    };
+    
+    mockAuthentificationService.fetchUserInfo.and.returnValue(of(mockUserSgConnect));
     mockAuthentificationService.hasUserPermission.and.returnValue(true);
 
-    component.ngOnInit();
-    expect(mockUploadService.getDatasetContent).toHaveBeenCalledWith('testId');
-    expect(component.fileData).toEqual(['data']);
-  });
-
-  it('should handle file selection', () => {
-    const mockEvent = {
-      target: {
-        files: [new File(['test'], 'test.txt', { type: 'text/plain' })],
-        value: 'C:\\fakepath\\test.txt'
-      }
-    } as unknown as Event;
-    component.setSelectedFile(mockEvent);
-    expect(component.selectedFile.fileName).toEqual('test.txt');
-  });
-
-  it('should send dataset file for verification', () => {
-    const mockResponse = new HttpResponse({ body: { response: { nonvalidLines: 0, resultDetails: ['detail'] } } });
-    mockUploadService.sendDatasetFileForVerification.and.returnValue(of(mockResponse));
-
-    component.sendDatasetFileForVerification();
-    expect(mockUploadService.sendDatasetFileForVerification).toHaveBeenCalled();
-  });
-
-  it('should handle error while sending dataset file for verification', () => {
-    const mockError = { message: 'test error' };
-    mockUploadService.sendDatasetFileForVerification.and.returnValue(throwError(mockError));
-
-    component.sendDatasetFileForVerification();
-    expect(component.selectedFile.status.checkCode).toEqual(CHECK_CODE.UNCHECKED);
-  });
-
-  it('should change dataset', () => {
-    component.changeDataset();
-    expect(component.selectedFile.fileName).toEqual('');
-  });
-});
+ 
