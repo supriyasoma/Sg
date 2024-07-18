@@ -1,29 +1,29 @@
-sendDatasetFileForVerification: jasmine.createSpy('sendDatasetFileForVerification').and.callFake((referentialId: string, referentialFile: File) => {
-    // Create FormData and mock HTTP headers
-    const formData = new FormData();
-    formData.append('referentialFile', referentialFile, referentialFile.name);
+createCheckResultFromResponse: jasmine.createSpy('createCheckResultFromResponse').and.callFake((response: HttpResponse<ApiCheckResponse>) => {
+    const nonValidLines = response.body!.response.nonValidLines;
+    const resultDetails = response.body!.response.resultDetails;
+    const validLines = response.body!.response.validLines;
+    const errors = response.body!.response.errorsDetails;
 
-    const httpHeaders = new HttpHeaders().set('Accept', 'application/json; charset=utf-8');
-
-    // Mock URI (adjust as per your environment setup)
-    const uri = `${environment.serviceBaseUrl}${this.verificationUri}/${referentialId}`;
-
-    // Simulate HTTP response
-    const mockResponse: ApiCheckResponse = {
-      statusCode: 200,
-      errorMessage: '',
-      response: {
-        validLines: 10,
-        nonValidLines: 5,
-        errorsDetails: ['Error 1', 'Error 2'],
-        resultDetails: ['Result 1', 'Result 2']
-      }
-    };
-
-    const httpResponse = new HttpResponse({
-      body: mockResponse,
-      status: 200
-    });
-
-    return of(httpResponse);
+    if (nonValidLines > 0) {
+      return new CheckResult(
+        CHECK_CODE.KO,
+        'Errors in Lines: ' + errors.join(', '),
+        errors,
+        resultDetails
+      );
+    } else if (resultDetails.length > 0) {
+      return new CheckResult(
+        CHECK_CODE.OK,
+        'Dataset file is valid',
+        [],
+        resultDetails
+      );
+    } else {
+      return new CheckResult(
+        CHECK_CODE.KO,
+        'Dataset is empty',
+        [],
+        resultDetails
+      );
+    }
   })
