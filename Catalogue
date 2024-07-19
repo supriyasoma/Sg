@@ -1,14 +1,8 @@
-const mockResponse = {
-      response: [{
-        fileName: 'testFile',
-        version: '1.0',
-        user: 'Test user',
-        date: '2022-01-01',
-        referentialId: testId
-      }]
-    };
-    const mockHttpResponse = new HttpResponse({
-      body: mockResponse,
-      status: 200,
-      statusText: 'OK'
-    });
+const uploadServiceStub = {
+  // Existing mocks for other methods...
+
+  getCSVFileDefinitionFromGridDataWithHeader: jasmine.createSpy('getCSVFileDefinitionFromGridDataWithHeader').and.callFake((fileName: string, gridApi: GridApi) => {
+    // Implement your mock logic here
+    return new CSVFileDefinition(fileName, ['Mocked Header Row', 'Mocked Data Row 1', 'Mocked Data Row 2']);
+  })
+};
