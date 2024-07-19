@@ -1,8 +1,6 @@
-const uploadServiceStub = {
-  // Existing mocks for other methods...
-
-  getCSVFileDefinitionFromGridDataWithHeader: jasmine.createSpy('getCSVFileDefinitionFromGridDataWithHeader').and.callFake((fileName: string, gridApi: GridApi) => {
-    // Implement your mock logic here
-    return new CSVFileDefinition(fileName, ['Mocked Header Row', 'Mocked Data Row 1', 'Mocked Data Row 2']);
-  })
-};
+getCSVFileDefinitionFromGridData = jasmine.createSpy('getCSVFileDefinitionFromGridData').and.callFake(
+    (fileName: string, gridApi: any): CSVFileDefinition => {
+      const mockCSVFileDefinition = new CSVFileDefinition(fileName, ['mockContentLine1', 'mockContentLine2']);
+      return mockCSVFileDefinition;
+    }
+  );
