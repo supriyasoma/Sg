@@ -1,6 +1,17 @@
-getCSVFileDefinitionFromGridData = jasmine.createSpy('getCSVFileDefinitionFromGridData').and.callFake(
-    (fileName: string, gridApi: any): CSVFileDefinition => {
-      const mockCSVFileDefinition = new CSVFileDefinition(fileName, ['mockContentLine1', 'mockContentLine2']);
-      return mockCSVFileDefinition;
+sendDatasetForVerification = jasmine.createSpy('sendDatasetForVerification').and.callFake(
+    (referentialId: string, csvFileDefinition: CSVFileDefinition): Observable<HttpResponse<ApiCheckResponse>> => {
+      const mockApiCheckResponse: ApiCheckResponse = {
+        // Mock the properties of ApiCheckResponse here
+        status: 'success',
+        message: 'Verification successful'
+      };
+      
+      const mockHttpResponse = new HttpResponse({
+        body: mockApiCheckResponse,
+        status: 200,
+        statusText: 'OK'
+      });
+      
+      return of(mockHttpResponse);
     }
   );
