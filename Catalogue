@@ -1,8 +1,19 @@
-setDatasetContent = jasmine.createSpy('setDatasetContent').and.callFake((referentialId: string, datasetContent: any) => {
-    const httpResponse = new HttpResponse({
-      body: 'Dataset content set successfully',
-      status: 200,
-      statusText: 'OK'
-    });
-    return of(httpResponse);
-  });
+exportDataAsCsv: jasmine.createSpy('exportDataAsCsv').and.callFake((params: any) => {
+        // Simulate calling processHeaderCallback
+        const mockHeaderParams = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Error: Test error message' } };
+        const headerResult = params.processHeaderCallback(mockHeaderParams);
+        expect(headerResult).toBe('ok');
+
+        const mockHeaderParamsInvalid = { column: { getColId: () => 'checkResult' }, value: { isValid: false, message: 'Error: Test error message' } };
+        const headerResultInvalid = params.processHeaderCallback(mockHeaderParamsInvalid);
+        expect(headerResultInvalid).toBe('Test error message'.replace(/[\r\n]/g, "").substr('Test error message'.indexOf(":") + 1));
+
+        const mockHeaderParamsOther = { column: { getColId: () => 'otherColumn' }, value: 'Some value' };
+        const headerResultOther = params.processHeaderCallback(mockHeaderParamsOther);
+        expect(headerResultOther).toBe('OtherColumn');
+
+        // Simulate calling processCellCallback
+        const mockCellParams = { value: 'Cell value' };
+        const cellResult = params.processCellCallback(mockCellParams);
+        expect(cellResult).toBe('Cell value');
+      })
