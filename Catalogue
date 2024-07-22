@@ -1,4 +1,4 @@
-mockUploadService.getRowDataFormGrid.and.callFake((gridApi: any) => {
+  getRowDataFormGrid = jasmine.createSpy('getRowDataFormGrid').and.callFake((gridApi: any) => {
     const contents: string[] = [];
     gridApi.forEachNode((node: any) => contents.push(node.data));
     return contents;
