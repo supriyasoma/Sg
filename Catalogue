@@ -1,8 +1,8 @@
-exportDataAsCsv: jasmine.createSpy('exportDataAsCsv').and.callFake((params: any) => {
+exportDataAsCsv: jasmine.createSpy('exportDataAsCsv').and.callFake((params: CsvExportParams) => {
         // Simulate calling processHeaderCallback
-        const mockHeaderParams = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Error: Test error message' } };
-        const headerResult = params.processHeaderCallback(mockHeaderParams);
-        expect(headerResult).toBe('ok');
+        const mockHeaderParamsCheckResult = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Error: Test error message' } };
+        const headerResultCheckResult = params.processHeaderCallback(mockHeaderParamsCheckResult);
+        expect(headerResultCheckResult).toBe('ok');
 
         const mockHeaderParamsInvalid = { column: { getColId: () => 'checkResult' }, value: { isValid: false, message: 'Error: Test error message' } };
         const headerResultInvalid = params.processHeaderCallback(mockHeaderParamsInvalid);
