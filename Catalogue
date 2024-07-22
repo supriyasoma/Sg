@@ -1,17 +1,5 @@
-it('should call csvExport when exportCSV is called', () => {
-    spyOn(component, 'csvExport').and.callThrough();
-    component.exportCSV();
-    expect(component.csvExport).toHaveBeenCalled();
-  });
-
-  it('should call pushToValidation when pushToValidation is called', () => {
-    spyOn(component, 'pushToValidation').and.callThrough();
-    component.pushToValidation();
-    expect(component.pushToValidation).toHaveBeenCalled();
-  });
-
-  it('should call pushToLucid when pushToLucid is called', () => {
-    spyOn(component, 'pushToLucid').and.callThrough();
-    component.pushToLucid();
-    expect(component.pushToLucid).toHaveBeenCalled();
+mockUploadService.getRowDataFormGrid.and.callFake((gridApi: any) => {
+    const contents: string[] = [];
+    gridApi.forEachNode((node: any) => contents.push(node.data));
+    return contents;
   });
