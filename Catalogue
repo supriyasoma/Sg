@@ -1,17 +1,14 @@
-sendDatasetForVerification = jasmine.createSpy('sendDatasetForVerification').and.callFake(
-    (referentialId: string, csvFileDefinition: CSVFileDefinition): Observable<HttpResponse<ApiCheckResponse>> => {
-      const mockApiCheckResponse: ApiCheckResponse = {
-        // Mock the properties of ApiCheckResponse here
-        status: 'success',
-        message: 'Verification successful'
-      };
-      
-      const mockHttpResponse = new HttpResponse({
-        body: mockApiCheckResponse,
-        status: 200,
-        statusText: 'OK'
-      });
-      
-      return of(mockHttpResponse);
-    }
-  );
+it('should handle error during sendDataToLucid', () => {
+  // Arrange (setup mocks and spies)
+  const mockErrorResponse = new Error('Failed to send data to Lucid');
+  mockuploadService.sendDataToLucid.and.returnValue(throwError(mockErrorResponse));
+
+  // Act (call the function)
+  component.pushToLucid();
+
+  // Assert (verify behavior)
+  expect(component.alertValue.class).toBe('alert alert-danger');
+  expect(component.showSpinner).toBe(false);
+  expect(component.isPushed.emit).toHaveBeenCalledWith(false);
+  expect(console.error).toHaveBeenCalledWith(mockErrorResponse); // optional assertion for logging
+});
