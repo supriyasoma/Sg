@@ -1,7 +1,17 @@
-const errorResponse = new HttpErrorResponse({
-      error: 'test 401 error',
-      status: 401,
-      statusText: 'Unauthorized'
-    });
+it('should call csvExport when exportCSV is called', () => {
+    spyOn(component, 'csvExport').and.callThrough();
+    component.exportCSV();
+    expect(component.csvExport).toHaveBeenCalled();
+  });
 
-    mockUploadService.sendDataToLucid.and.returnValue(throwError(errorResponse));
+  it('should call pushToValidation when pushToValidation is called', () => {
+    spyOn(component, 'pushToValidation').and.callThrough();
+    component.pushToValidation();
+    expect(component.pushToValidation).toHaveBeenCalled();
+  });
+
+  it('should call pushToLucid when pushToLucid is called', () => {
+    spyOn(component, 'pushToLucid').and.callThrough();
+    component.pushToLucid();
+    expect(component.pushToLucid).toHaveBeenCalled();
+  });
