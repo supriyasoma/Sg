@@ -1,5 +1,8 @@
-  getRowDataFormGrid = jasmine.createSpy('getRowDataFormGrid').and.callFake((gridApi: any) => {
-    const contents: string[] = [];
-    gridApi.forEachNode((node: any) => contents.push(node.data));
-    return contents;
+setDatasetContent = jasmine.createSpy('setDatasetContent').and.callFake((referentialId: string, datasetContent: any) => {
+    const httpResponse = new HttpResponse({
+      body: 'Dataset content set successfully',
+      status: 200,
+      statusText: 'OK'
+    });
+    return of(httpResponse);
   });
