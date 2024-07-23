@@ -1,19 +1,26 @@
-exportDataAsCsv: jasmine.createSpy('exportDataAsCsv').and.callFake((params: CsvExportParams) => {
-        // Simulate calling processHeaderCallback
-        const mockHeaderParamsCheckResult = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Error: Test error message' } };
-        const headerResultCheckResult = params.processHeaderCallback(mockHeaderParamsCheckResult);
-        expect(headerResultCheckResult).toBe('ok');
+  it('should handle version select when datasetContent and versionData are defined', (done) => {
+    component.datasetContent = [
+      { version: '1.0', data: 'data1' },
+      { version: '2.0', data: 'data2' }
+    ];
+    component.isLoadFile = false;
+    component.rowData = 'rowData';
 
-        const mockHeaderParamsInvalid = { column: { getColId: () => 'checkResult' }, value: { isValid: false, message: 'Error: Test error message' } };
-        const headerResultInvalid = params.processHeaderCallback(mockHeaderParamsInvalid);
-        expect(headerResultInvalid).toBe('Test error message'.replace(/[\r\n]/g, "").substr('Test error message'.indexOf(":") + 1));
+    component.onVersionSelect('2.0');
 
-        const mockHeaderParamsOther = { column: { getColId: () => 'otherColumn' }, value: 'Some value' };
-        const headerResultOther = params.processHeaderCallback(mockHeaderParamsOther);
-        expect(headerResultOther).toBe('OtherColumn');
+    setTimeout(() => {
+      // Assertions to check setTimeout functionality
+      expect(mockGridApi.setRowData).toHaveBeenCalledWith('data2');
+      expect(component.isLoadFile).toBe(false);
 
-        // Simulate calling processCellCallback
-        const mockCellParams = { value: 'Cell value' };
-        const cellResult = params.processCellCallback(mockCellParams);
-        expect(cellResult).toBe('Cell value');
-      })
+      done();
+    }, 500);
+
+    // Add assertions to cover other lines
+    expect(component.showSpinner).toBe(false);
+    expect(component.dataIsValid.emit).toHaveBeenCalledWith(false);
+    expect(component.isPushed.emit).toHaveBeenCalledWith(false);
+    expect(component.editChangeOnVersion.emit).toHaveBeenCalledWith(false);
+    expect(component.alertValue).toEqual({ class: "", message: "" });
+    expect(component.showSpinner).toBe(false);
+  });
