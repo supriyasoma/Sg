@@ -1,26 +1,44 @@
-  it('should handle version select when datasetContent and versionData are defined', (done) => {
-    component.datasetContent = [
-      { version: '1.0', data: 'data1' },
-      { version: '2.0', data: 'data2' }
-    ];
-    component.isLoadFile = false;
-    component.rowData = 'rowData';
+it('should set dataset content and update dataset on successful save as draft', () => {
+    // Arrange
+    const mockGridApi = { forEachNode: (callback: Function) => callback({ data: 'mockData' }) };
+    const mockResponse = new HttpResponse({ body: { /* mock response data */ } });
+    const mockDataSet = {};
 
-    component.onVersionSelect('2.0');
+    mockUploadService.getRowDataFromGrid.and.returnValue(['mockData']);
+    mockUploadService.setDatasetContent.and.returnValue(of(mockResponse));
+    mockUploadService.mapHttpResponseToDataSet.and.returnValue(mockDataSet);
 
-    setTimeout(() => {
-      // Assertions to check setTimeout functionality
-      expect(mockGridApi.setRowData).toHaveBeenCalledWith('data2');
-      expect(component.isLoadFile).toBe(false);
+    component.gridApi = mockGridApi; // Set the mock gridApi
+    component.referentialId = 'mockId'; // Set a mock referentialId
 
-      done();
-    }, 500);
+    // Act
+    component.SaveAsDraft();
 
-    // Add assertions to cover other lines
+    // Assert
+    expect(component.showSpinner).toBe(true);
+    expect(mockUploadService.getRowDataFromGrid).toHaveBeenCalledWith(mockGridApi);
+    expect(mockUploadService.setDatasetContent).toHaveBeenCalledWith('mockId', jasmine.any(Object));
+    expect(mockUploadService.mapHttpResponseToDataSet).toHaveBeenCalledWith(mockResponse);
+    expect(component.datasetContent).toBe(mockDataSet);
+    expect(component.alertValue).toBe(alertMessagesValues.draftSave.success);
     expect(component.showSpinner).toBe(false);
-    expect(component.dataIsValid.emit).toHaveBeenCalledWith(false);
-    expect(component.isPushed.emit).toHaveBeenCalledWith(false);
-    expect(component.editChangeOnVersion.emit).toHaveBeenCalledWith(false);
-    expect(component.alertValue).toEqual({ class: "", message: "" });
+  });
+
+  it('should handle errors correctly in save as draft', () => {
+    // Arrange
+    const mockError = new Error('Mock error');
+    mockUploadService.setDatasetContent.and.returnValue(throwError(mockError));
+
+    component.gridApi = { forEachNode: (callback: Function) => callback({ data: 'mockData' }) };
+    component.referentialId = 'mockId';
+
+    // Act
+    component.SaveAsDraft();
+
+    // Assert
+    expect(component.showSpinner).toBe(true);
+    expect(mockUploadService.getRowDataFromGrid).toHaveBeenCalled();
+    expect(mockUploadService.setDatasetContent).toHaveBeenCalledWith('mockId', jasmine.any(Object));
+    expect(component.alertValue.message).toContain('Mock error');
     expect(component.showSpinner).toBe(false);
   });
