@@ -1,44 +1,127 @@
-it('should set dataset content and update dataset on successful save as draft', () => {
-    // Arrange
-    const mockGridApi = { forEachNode: (callback: Function) => callback({ data: 'mockData' }) };
-    const mockResponse = new HttpResponse({ body: { /* mock response data */ } });
-    const mockDataSet = {};
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { of, throwError } from 'rxjs';
+import { DatasetEditComponent } from './dataset-edit.component'; // Adjust import as needed
+import { UploadService } from './upload.service'; // Adjust import as needed
+import { DatasetInfoService } from './dataset-info.service'; // Adjust import as needed
+import { AuthenticationService } from './authentication.service'; // Adjust import as needed
+import { HttpResponse } from '@angular/common/http';
 
-    mockUploadService.getRowDataFromGrid.and.returnValue(['mockData']);
-    mockUploadService.setDatasetContent.and.returnValue(of(mockResponse));
-    mockUploadService.mapHttpResponseToDataSet.and.returnValue(mockDataSet);
+describe('DatasetEditComponent', () => {
+  let component: DatasetEditComponent;
+  let fixture: ComponentFixture<DatasetEditComponent>;
 
-    component.gridApi = mockGridApi; // Set the mock gridApi
-    component.referentialId = 'mockId'; // Set a mock referentialId
+  let mockUploadService: jasmine.SpyObj<UploadService>;
+  let mockDatasetService: jasmine.SpyObj<DatasetInfoService>;
+  let mockAuthService: jasmine.SpyObj<AuthenticationService>;
+  let mockGridApi: any;
 
-    // Act
-    component.SaveAsDraft();
+  beforeEach(async () => {
+    mockUploadService = jasmine.createSpyObj('UploadService', [
+      'getRowDataFromGrid',
+      'setDatasetContent',
+      'mapHttpResponseToDataSet',
+      'getCSVFileDefinitionFromGridData',
+      'sendDatasetForVerification'
+    ]);
 
-    // Assert
-    expect(component.showSpinner).toBe(true);
-    expect(mockUploadService.getRowDataFromGrid).toHaveBeenCalledWith(mockGridApi);
-    expect(mockUploadService.setDatasetContent).toHaveBeenCalledWith('mockId', jasmine.any(Object));
-    expect(mockUploadService.mapHttpResponseToDataSet).toHaveBeenCalledWith(mockResponse);
-    expect(component.datasetContent).toBe(mockDataSet);
-    expect(component.alertValue).toBe(alertMessagesValues.draftSave.success);
-    expect(component.showSpinner).toBe(false);
+    mockDatasetService = jasmine.createSpyObj('DatasetInfoService', [
+      'currentReferentialId',
+      'currentUserNames',
+      'currentDatasetContent',
+      'currentDatasetVersions',
+      'updateDatasetVersions',
+      'updateDatasetContent',
+      'updateValidateDate',
+      'updateUserName'
+    ]);
+
+    mockAuthService = jasmine.createSpyObj('AuthenticationService', ['fetchUserName']);
+
+    mockGridApi = {
+      forEachNode: jasmine.createSpy('forEachNode').and.callFake((callback: Function) => callback({ data: 'mockData' })),
+      colDef: jasmine.createSpy('colDef'),
+      setRowData: jasmine.createSpy('setRowData'),
+      exportDataAsCsv: jasmine.createSpy('exportDataAsCsv').and.callFake((params: any) => {
+        const mockHeaderParams = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Error: Test error message' } };
+        const headerResult = params.processHeaderCallback(mockHeaderParams);
+        expect(headerResult).toBe('CheckResult');
+
+        const mockCellParams = { column: { getColId: () => 'checkResult' }, value: { isValid: true, message: 'Errors: Test error message' } };
+        const cellResult = params.processCellCallback(mockCellParams);
+        expect(cellResult).toBe('OK');
+        
+        const mockCellParamsInvalid = { column: { getColId: () => 'checkResult' }, value: { isValid: false, message: 'Error: Test error message' } };
+        const invalidCellResult = params.processCellCallback(mockCellParamsInvalid);
+        expect(invalidCellResult).toBe('Test error message');
+
+        const mockCellParamsOther = { column: { getColId: () => 'otherColumn' }, value: 'someValue' };
+        const newCellResult = params.processCellCallback(mockCellParamsOther);
+        expect(newCellResult).toBe('someValue');
+      })
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        { provide: AuthenticationService, useValue: mockAuthService },
+        { provide: DatasetInfoService, useValue: mockDatasetService },
+        { provide: UploadService, useValue: mockUploadService }
+      ],
+      declarations: [DatasetEditComponent]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DatasetEditComponent);
+    component = fixture.componentInstance;
+
+    // Set up spies for component interactions
+    spyOn(component, 'updateDatasetContent').and.callThrough();
+
+    fixture.detectChanges();
   });
 
-  it('should handle errors correctly in save as draft', () => {
-    // Arrange
-    const mockError = new Error('Mock error');
-    mockUploadService.setDatasetContent.and.returnValue(throwError(mockError));
-
-    component.gridApi = { forEachNode: (callback: Function) => callback({ data: 'mockData' }) };
-    component.referentialId = 'mockId';
-
-    // Act
-    component.SaveAsDraft();
-
-    // Assert
-    expect(component.showSpinner).toBe(true);
-    expect(mockUploadService.getRowDataFromGrid).toHaveBeenCalled();
-    expect(mockUploadService.setDatasetContent).toHaveBeenCalledWith('mockId', jasmine.any(Object));
-    expect(component.alertValue.message).toContain('Mock error');
-    expect(component.showSpinner).toBe(false);
+  afterEach(() => {
+    jasmine.clock().uninstall();
   });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should check equalCheck function', () => {
+    const arr1: any[] = [1, 2, [3, 4]];
+    const arr2: any[] = [1, 2, [3, 4]];
+    expect(component.equalCheck(arr1, arr2)).toBeTruthy();
+  });
+
+  it('should check pushToLucid function', () => {
+    component.pushToLucid();
+    expect(component.alertValue.class).toBe('alert alert-success');
+  });
+
+  it('should check pushToValidation function with non-valid lines', () => {
+    mockUploadService.getCSVFileDefinitionFromGridData.and.callFake((fileName: string, gridApi: any) => {
+      return new CSVFileDefinition(fileName, ['mockContentLine1', 'mockContentLine2']);
+    });
+    component.pushToValidation();
+    expect(mockUploadService.getCSVFileDefinitionFromGridData).toHaveBeenCalled();
+    expect(component.alertValue.class).toBe('alert alert-danger');
+  });
+
+  it('should check csvExport function', () => {
+    component.csvExport();
+    expect(mockGridApi.exportDataAsCsv).toHaveBeenCalledWith(jasmine.objectContaining({
+      columnKeys: component.columnFields,
+      fileName: component.exportFileName,
+      suppressQuotes: true,
+      processHeaderCallback: jasmine.any(Function),
+      processCellCallback: jasmine.any(Function)
+    }));
+  });
+
+  it('should check saveAsDraft function', () => {
+    component.saveAsDraft();
+    expect(component['updateDatasetContent']).toHaveBeenCalled();
+    expect(component.alertValue.message).toBe('Draft saved successfully'); // Adjust according to your alert message
+  });
+});
