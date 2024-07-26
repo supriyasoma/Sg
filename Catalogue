@@ -1,10 +1,143 @@
-mockDatasetService = jasmine.createSpyObj('DatasetInfoService', {
-      currentReferentialId: of('test-id'),
-      currentUserNames: of('test-name'),
-      currentDatasetContent: of(['test-dataset-content']),
-      currentDatasetVersions: of([]),
-      updateDatasetVersions: jasmine.createSpy('updateDatasetVersions'),
-      updateDatasetContent: jasmine.createSpy('updateDatasetContent'),
-      updateValidateDate: jasmine.createSpy('updateValidateDate'),
-      updateUserName: jasmine.createSpy('updateUserName')
-    });
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { AuditTrailComponent } from './audit-trail.component';
+import { AuthentificationService } from '../authentication/authentification-service';
+import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
+import { UploadService } from '../services/http/upload-service.service';
+import { of, throwError } from 'rxjs';
+
+describe('AuditTrailComponent', () => {
+  let component: AuditTrailComponent;
+  let fixture: ComponentFixture<AuditTrailComponent>;
+  let authentificationService: jasmine.SpyObj<AuthentificationService>;
+  let datasetInfoService: jasmine.SpyObj<DatasetInfoService>;
+  let uploadService: jasmine.SpyObj<UploadService>;
+
+  beforeEach(() => {
+    const authServiceSpy = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
+    const datasetInfoServiceSpy = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
+    const uploadServiceSpy = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
+
+    TestBed.configureTestingModule({
+      declarations: [AuditTrailComponent],
+      providers: [
+        { provide: AuthentificationService, useValue: authServiceSpy },
+        { provide: DatasetInfoService, useValue: datasetInfoServiceSpy },
+        { provide: UploadService, useValue: uploadServiceSpy }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(AuditTrailComponent);
+    component = fixture.componentInstance;
+    authentificationService = TestBed.inject(AuthentificationService) as jasmine.SpyObj<AuthentificationService>;
+    datasetInfoService = TestBed.inject(DatasetInfoService) as jasmine.SpyObj<DatasetInfoService>;
+    uploadService = TestBed.inject(UploadService) as jasmine.SpyObj<UploadService>;
+
+    datasetInfoService.currentReferentialId.and.returnValue(of('dummyId'));
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should fetch user info and update audit trail data on successful permission check', () => {
+    const claims = {
+      name: 'Test User',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'Test Network',
+      user_authorization: 'auth'
+    };
+    const auditData = [
+      { version: '1', date: '2023-07-26', author: 'Author1', status: 'Completed', dateInLucid: '2023-07-25' },
+      { version: '2', date: '2023-07-27', author: 'Author2', status: 'Pending', dateInLucid: '2023-07-26' }
+    ];
+
+    authentificationService.fetchUserInfo.and.returnValue(of(claims));
+    authentificationService.hasUserPermission.and.returnValue(true);
+    uploadService.getAuditTrail.and.returnValue(of({ data: auditData }));
+    uploadService.mapHttpResponseToAuditDataSet.and.returnValue(auditData);
+
+    component.ngOnInit();
+
+    expect(component.userInfo).toEqual(jasmine.objectContaining(claims));
+    expect(component.showSpinner).toBeFalse();
+    expect(component.auditTrailData.length).toBe(auditData.length);
+    expect(component.version).toEqual(['1', '2']);
+  });
+
+  it('should handle error when fetchUserInfo fails', () => {
+    const errorResponse = new Error('Test error');
+    authentificationService.fetchUserInfo.and.returnValue(throwError(errorResponse));
+
+    spyOn(console, 'log');
+
+    component.ngOnInit();
+
+    expect(component.showSpinner).toBeFalse();
+    expect(console.log).toHaveBeenCalledWith(errorResponse);
+  });
+
+  it('should handle lack of permissions gracefully', () => {
+    const claims = {
+      name: 'Test User',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'Test Network',
+      user_authorization: 'auth'
+    };
+
+    authentificationService.fetchUserInfo.and.returnValue(of(claims));
+    authentificationService.hasUserPermission.and.returnValue(false);
+
+    component.ngOnInit();
+
+    expect(component.userInfo).toEqual(jasmine.objectContaining(claims));
+    expect(component.showSpinner).toBeFalse();
+  });
+
+  it('should fetch audit trail data successfully', () => {
+    const claims = {
+      name: 'Test User',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'Test Network',
+      user_authorization: 'auth'
+    };
+    const auditData = [
+      { version: '1', date: '2023-07-26', author: 'Author1', status: 'Completed', dateInLucid: '2023-07-25' },
+      { version: '2', date: '2023-07-27', author: 'Author2', status: 'Pending', dateInLucid: '2023-07-26' }
+    ];
+
+    authentificationService.fetchUserInfo.and.returnValue(of(claims));
+    authentificationService.hasUserPermission.and.returnValue(true);
+    uploadService.getAuditTrail.and.returnValue(of({ data: auditData }));
+    uploadService.mapHttpResponseToAuditDataSet.and.returnValue(auditData);
+
+    component.ngOnInit();
+
+    expect(component.auditTrailData).toEqual(auditData);
+    expect(component.version).toEqual(['1', '2']);
+    expect(component.showSpinner).toBeFalse();
+  });
+
+  it('should handle empty audit trail data gracefully', () => {
+    const claims = {
+      name: 'Test User',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'Test Network',
+      user_authorization: 'auth'
+    };
+
+    authentificationService.fetchUserInfo.and.returnValue(of(claims));
+    authentificationService.hasUserPermission.and.returnValue(true);
+    uploadService.getAuditTrail.and.returnValue(of({ data: [] }));
+    uploadService.mapHttpResponseToAuditDataSet.and.returnValue([]);
+
+    component.ngOnInit();
+
+    expect(component.auditTrailData.length).toBe(0);
+    expect(component.version.length).toBe(0);
+    expect(component.showSpinner).toBeFalse();
+  });
+});
