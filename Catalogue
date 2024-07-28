@@ -1,24 +1,33 @@
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { HttpResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AuditTrailComponent } from './audit-trail.component';
-import { AuthentificationService } from '../authentication/authentification-service';
-import { DatasetInfoService } from '../services/common-storage/dataset-info-service';
-import { UploadService } from '../services/http/upload-service.service';
-import { of, throwError } from 'rxjs';
+import { ContentFormComponent } from './content-form.component';
+import { AuthentificationService } from 'src/app/authentication/authentication-service';
+import { DatasetInfoService } from 'src/app/services/common-storage/dataset-info-service';
+import { UploadService } from 'src/app/services/http/upload-service.service';
+import { of } from 'rxjs';
+import { IUserSgConnect } from 'src/app/authentication/IUserSgConnect';
+import { SelectedFile } from '../../models/selected-file';
+import { CheckResult } from '../../models/check-result';
+import { CHECK_CODE } from '../../models/check-code';
 
-describe('AuditTrailComponent', () => {
-  let component: AuditTrailComponent;
-  let fixture: ComponentFixture<AuditTrailComponent>;
+describe('ContentFormComponent', () => {
+  let component: ContentFormComponent;
+  let fixture: ComponentFixture<ContentFormComponent>;
   let authentificationService: jasmine.SpyObj<AuthentificationService>;
   let datasetInfoService: jasmine.SpyObj<DatasetInfoService>;
   let uploadService: jasmine.SpyObj<UploadService>;
 
   beforeEach(() => {
     const authServiceSpy = jasmine.createSpyObj('AuthentificationService', ['fetchUserInfo', 'hasUserPermission']);
-    const datasetInfoServiceSpy = jasmine.createSpyObj('DatasetInfoService', ['currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate']);
-    const uploadServiceSpy = jasmine.createSpyObj('UploadService', ['getAuditTrail', 'mapHttpResponseToAuditDataSet']);
+    const datasetInfoServiceSpy = jasmine.createSpyObj('DatasetInfoService', [
+      'currentReferentialId', 'updateDatasetVersions', 'updateUserName', 'updateValidateDate', 'updateDatasetContent'
+    ]);
+    const uploadServiceSpy = jasmine.createSpyObj('UploadService', ['getDatasetContent', 'mapHttpResponseToDataSet', 'sendDatasetFileForVerification', 'createCheckResultFromResponse']);
 
     TestBed.configureTestingModule({
-      declarations: [AuditTrailComponent],
+      imports: [HttpClientTestingModule],
+      declarations: [ContentFormComponent],
       providers: [
         { provide: AuthentificationService, useValue: authServiceSpy },
         { provide: DatasetInfoService, useValue: datasetInfoServiceSpy },
@@ -26,118 +35,156 @@ describe('AuditTrailComponent', () => {
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AuditTrailComponent);
+    fixture = TestBed.createComponent(ContentFormComponent);
     component = fixture.componentInstance;
     authentificationService = TestBed.inject(AuthentificationService) as jasmine.SpyObj<AuthentificationService>;
     datasetInfoService = TestBed.inject(DatasetInfoService) as jasmine.SpyObj<DatasetInfoService>;
     uploadService = TestBed.inject(UploadService) as jasmine.SpyObj<UploadService>;
 
+    // Mock observable return values
     datasetInfoService.currentReferentialId.and.returnValue(of('dummyId'));
+
+    // Set up method return values
+    authentificationService.fetchUserInfo.and.returnValue(of({
+      name: 'Test User',
+      sub: 'test-sub',
+      is_sg_group_user: true,
+      origin_network: 'Test Network',
+      user_authorization: 'auth'
+    }));
+    authentificationService.hasUserPermission.and.returnValue(true);
+
+    uploadService.getDatasetContent.and.returnValue(of(new HttpResponse<any>({
+      body: [
+        { dateInLucid: '2023-07-25T10:00:00', version: '1', author: 'Author1', date: '2023-07-26T10:00:00', status: 'Completed' },
+        { dateInLucid: '2023-07-26T11:00:00', version: '2', author: 'Author2', date: '2023-07-27T11:00:00', status: 'Pending' }
+      ]
+    })));
+    uploadService.mapHttpResponseToDataSet.and.returnValue([
+      { dateInLucid: '2023-07-25 10:00:00', version: '1', author: 'Author1', date: '2023-07-26 10:00:00', status: 'Completed' },
+      { dateInLucid: '2023-07-26 11:00:00', version: '2', author: 'Author2', date: '2023-07-27 11:00:00', status: 'Pending' }
+    ]);
+    uploadService.sendDatasetFileForVerification.and.returnValue(of(new HttpResponse<any>({
+      body: { response: { nonValidLines: 0 } }
+    })));
+    uploadService.createCheckResultFromResponse.and.returnValue(new CheckResult(CHECK_CODE.KO, []));
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should fetch user info and update audit trail data on successful permission check', () => {
-    const claims = {
+  it('should fetch user info and update dataset on successful permission check', () => {
+    const claims: IUserSgConnect = {
       name: 'Test User',
       sub: 'test-sub',
       is_sg_group_user: true,
       origin_network: 'Test Network',
       user_authorization: 'auth'
     };
-    const auditData = [
-      { version: '1', date: '2023-07-26', author: 'Author1', status: 'Completed', dateInLucid: '2023-07-25' },
-      { version: '2', date: '2023-07-27', author: 'Author2', status: 'Pending', dateInLucid: '2023-07-26' }
+
+    const processedData = [
+      { dateInLucid: '2023-07-25 10:00:00', version: '1', author: 'Author1', date: '2023-07-26 10:00:00', status: 'Completed' },
+      { dateInLucid: '2023-07-26 11:00:00', version: '2', author: 'Author2', date: '2023-07-27 11:00:00', status: 'Pending' }
     ];
 
-    authentificationService.fetchUserInfo.and.returnValue(of(claims));
-    authentificationService.hasUserPermission.and.returnValue(true);
-    uploadService.getAuditTrail.and.returnValue(of({ data: auditData }));
-    uploadService.mapHttpResponseToAuditDataSet.and.returnValue(auditData);
-
     component.ngOnInit();
 
+    // Check results
     expect(component.userInfo).toEqual(jasmine.objectContaining(claims));
     expect(component.showSpinner).toBeFalse();
-    expect(component.auditTrailData.length).toBe(auditData.length);
-    expect(component.version).toEqual(['1', '2']);
+    expect(component.fileData).toEqual(processedData.map(data => data.dateInLucid));
+    expect(component.editAccess).toBeTrue();
+    expect(component.pushAccess).toBeTrue();
+
+    // Verify DatasetInfoService updates
+    expect(datasetInfoService.updateDatasetVersions).toHaveBeenCalledWith(['1', '2']);
+    expect(datasetInfoService.updateUserName).toHaveBeenCalledWith('Author2');
+    expect(datasetInfoService.updateValidateDate).toHaveBeenCalledWith('2023-07-27 11:00:00');
+    expect(datasetInfoService.updateDatasetContent).toHaveBeenCalledWith(processedData);
   });
 
-  it('should handle error when fetchUserInfo fails', () => {
-    const errorResponse = new Error('Test error');
-    authentificationService.fetchUserInfo.and.returnValue(throwError(errorResponse));
+  it('should handle dataset file verification and update selected file status', () => {
+    const selectedFile = new SelectedFile('dummyFile', new CheckResult(CHECK_CODE.UNCHECKED, []));
+    component.selectedFile = selectedFile;
 
-    spyOn(console, 'log');
+    component.sendDatasetFileForVerification();
 
-    component.ngOnInit();
-
-    expect(component.showSpinner).toBeFalse();
-    expect(console.log).toHaveBeenCalledWith(errorResponse);
+    expect(uploadService.sendDatasetFileForVerification).toHaveBeenCalled();
+    expect(component.selectedFile.status).toEqual(jasmine.objectContaining(new CheckResult(CHECK_CODE.KO, [])));
+    expect(component.isLoadFile).toBeTrue();
+    expect(component.fileData).toEqual([]);
+    expect(component.editAccess).toBeFalse();
   });
 
-  it('should handle lack of permissions gracefully', () => {
-    const claims = {
-      name: 'Test User',
-      sub: 'test-sub',
-      is_sg_group_user: true,
-      origin_network: 'Test Network',
-      user_authorization: 'auth'
-    };
+  it('should update dataset versions and reset state on changeDataset call', () => {
+    component.changeDataset();
 
-    authentificationService.fetchUserInfo.and.returnValue(of(claims));
-    authentificationService.hasUserPermission.and.returnValue(false);
-
-    component.ngOnInit();
-
-    expect(component.userInfo).toEqual(jasmine.objectContaining(claims));
-    expect(component.showSpinner).toBeFalse();
+    expect(datasetInfoService.updateDatasetContent).toHaveBeenCalledWith({});
+    expect(datasetInfoService.updateDatasetVersions).toHaveBeenCalledWith([]);
+    expect(component.selectedFile).toEqual(jasmine.any(SelectedFile));
+    expect(component.isPushed).toBeFalse();
+    expect(component.isLoaded).toBeFalse();
+    expect(component.showSpinner).toBeTrue();
   });
 
-  it('should fetch audit trail data successfully', () => {
-    const claims = {
-      name: 'Test User',
-      sub: 'test-sub',
-      is_sg_group_user: true,
-      origin_network: 'Test Network',
-      user_authorization: 'auth'
-    };
-    const auditData = [
-      { version: '1', date: '2023-07-26', author: 'Author1', status: 'Completed', dateInLucid: '2023-07-25' },
-      { version: '2', date: '2023-07-27', author: 'Author2', status: 'Pending', dateInLucid: '2023-07-26' }
-    ];
+  it('should toggle edit state and call DatasetEditComponent.editDataset', () => {
+    const datasetEditComponentSpy = jasmine.createSpyObj('DatasetEditComponent', ['editDataset', 'addRowDataset']);
+    component.datasetEditComponent = datasetEditComponentSpy;
 
-    authentificationService.fetchUserInfo.and.returnValue(of(claims));
-    authentificationService.hasUserPermission.and.returnValue(true);
-    uploadService.getAuditTrail.and.returnValue(of({ data: auditData }));
-    uploadService.mapHttpResponseToAuditDataSet.and.returnValue(auditData);
+    component.editDataset(true, false);
 
-    component.ngOnInit();
+    expect(component.editButtonLabel).toBe('Edit dataset content');
+    expect(component.isEdited).toBeTrue();
+    expect(datasetEditComponentSpy.editDataset).toHaveBeenCalledWith(true);
+    expect(component.isLoaded).toBeTrue();
 
-    expect(component.auditTrailData).toEqual(auditData);
-    expect(component.version).toEqual(['1', '2']);
-    expect(component.showSpinner).toBeFalse();
+    component.editDataset(false, false);
+
+    expect(component.editButtonLabel).toBe('Back to read-only mode');
+    expect(component.isEdited).toBeFalse();
+    expect(datasetEditComponentSpy.editDataset).toHaveBeenCalledWith(false);
   });
 
-  it('should handle empty audit trail data gracefully', () => {
-    const claims = {
-      name: 'Test User',
-      sub: 'test-sub',
-      is_sg_group_user: true,
-      origin_network: 'Test Network',
-      user_authorization: 'auth'
-    };
+  it('should call saveAsDraft on DatasetEditComponent', () => {
+    const datasetEditComponentSpy = jasmine.createSpyObj('DatasetEditComponent', ['saveAsDraft']);
+    component.datasetEditComponent = datasetEditComponentSpy;
 
-    authentificationService.fetchUserInfo.and.returnValue(of(claims));
-    authentificationService.hasUserPermission.and.returnValue(true);
-    uploadService.getAuditTrail.and.returnValue(of({ data: [] }));
-    uploadService.mapHttpResponseToAuditDataSet.and.returnValue([]);
+    component.saveAsDraft();
 
-    component.ngOnInit();
-
-    expect(component.auditTrailData.length).toBe(0);
-    expect(component.version.length).toBe(0);
-    expect(component.showSpinner).toBeFalse();
+    expect(datasetEditComponentSpy.saveAsDraft).toHaveBeenCalled();
   });
-});
+
+  it('should handle dataset deletion', () => {
+    const datasetEditComponentSpy = jasmine.createSpyObj('DatasetEditComponent', ['deleteDataset']);
+    component.datasetEditComponent = datasetEditComponentSpy;
+
+    component.deleteDataset();
+
+    expect(datasetEditComponentSpy.deleteDataset).toHaveBeenCalled();
+    expect(component.dataIsValid).toBeFalse();
+  });
+
+  it('should handle dataset validation and set data valid state', () => {
+    component.setDataIsValidValue(true);
+    expect(component.dataIsValid).toBeTrue();
+
+    component.setDataIsValidValue(false);
+    expect(component.dataIsValid).toBeFalse();
+  });
+
+  it('should handle push to Lucid', () => {
+    const datasetEditComponentSpy = jasmine.createSpyObj('DatasetEditComponent', ['pushToLucid']);
+    component.datasetEditComponent = datasetEditComponentSpy;
+
+    component.pushToLucid();
+
+    expect(datasetEditComponentSpy.pushToLucid).toHaveBeenCalled();
+  });
+
+  it('should handle push to validation', () => {
+    const datasetEditComponentSpy = jasmine.createSpyObj('DatasetEditComponent', ['pushToValidation']);
+    component.datasetEditComponent = datasetEditComponentSpy;
+
+    component.pushToValidation();
+
+    expect(datasetEditComponentSpy.pushToValidation).toHaveBeenCalled();
+  });
+
+  //
