@@ -1,24 +1,16 @@
-const mockDatasetContentResponse = new HttpResponse<string>({
-  body: JSON.stringify({
-    response: [
-      {
-        fileName: 'sample-file.csv',
-        version: '1.0',
-        user: 'testUser',
-        date: '2023-07-27T12:34:56',
-        data: ['data1', 'data2'],
-        referentialId: '1234'
-      },
-      {
-        fileName: 'sample-file-2.csv',
-        version: '2.0',
-        user: 'anotherUser',
-        date: '2023-07-28T13:45:67',
-        data: ['data3', 'data4'],
-        referentialId: '5678'
-      }
-    ]
-  }),
+const mockApiCheckResponse: ApiCheckResponse = {
+  statusCode: 200,
+  errorMessage: '',
+  response: {
+    validLines: 100,
+    nonValidLines: 2,
+    errorsDetails: ['Error in line 5', 'Error in line 20'],
+    resultDetails: ['Column mismatch', 'Invalid format in row 10']
+  }
+};
+
+const mockHttpResponse = new HttpResponse<ApiCheckResponse>({
+  body: mockApiCheckResponse,
   status: 200,
   statusText: 'OK'
 });
