@@ -1,18 +1,24 @@
-const mockMappedData = [
-  {
-    fileName: 'sample-file.csv',
-    version: '1.0',
-    user: 'testUser',
-    date: '2023-07-27T12:34:56',
-    data: ['data1', 'data2'],
-    referentialId: '1234'
-  },
-  {
-    fileName: 'sample-file-2.csv',
-    version: '2.0',
-    user: 'anotherUser',
-    date: '2023-07-28T13:45:67',
-    data: ['data3', 'data4'],
-    referentialId: '5678'
-  }
-];
+const mockDatasetContentResponse = new HttpResponse<string>({
+  body: JSON.stringify({
+    response: [
+      {
+        fileName: 'sample-file.csv',
+        version: '1.0',
+        user: 'testUser',
+        date: '2023-07-27T12:34:56',
+        data: ['data1', 'data2'],
+        referentialId: '1234'
+      },
+      {
+        fileName: 'sample-file-2.csv',
+        version: '2.0',
+        user: 'anotherUser',
+        date: '2023-07-28T13:45:67',
+        data: ['data3', 'data4'],
+        referentialId: '5678'
+      }
+    ]
+  }),
+  status: 200,
+  statusText: 'OK'
+});
