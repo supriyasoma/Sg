@@ -1,35 +1,18 @@
-it('should handle response without expected data', () => {
-    // Mocking file and form control
+it('should handle error response', () => {
     const mockFile = new File(['dummy content'], 'testFile.csv', { type: 'text/csv' });
     component.uploadForm.patchValue({ selectedFileLocation: mockFile });
 
-    // Mocking the API response without the expected data
-    const mockApiCheckResponseWithoutData = new HttpResponse<ApiCheckResponse>({
-      body: { statusCode: 200, errorMessage: '', response: null },
-      status: 200,
-      statusText: 'OK'
+    const errorResponse = new ErrorEvent('Network error', {
+      message: 'Failed to connect to the server.'
     });
 
-    uploadService.sendDatasetFileForVerification.and.returnValue(of(mockApiCheckResponseWithoutData));
-
-    spyOn(component, 'editDataset');
-    spyOn(component, 'loadPreviousDataset');
-    spyOn(window, 'setTimeout'); // Spy on setTimeout to control its behavior in the test
+    uploadService.sendDatasetFileForVerification.and.returnValue(throwError(errorResponse));
 
     component.sendDatasetFileForVerification();
 
-    // Verifications
     expect(uploadService.sendDatasetFileForVerification).toHaveBeenCalledWith(component.selectedDataset, mockFile);
-    expect(component.alertValue).toEqual(JSON.parse(JSON.stringify(alertMessagesValues.load.error)));
-
-    expect(component.editDataset).toHaveBeenCalledWith(false, false);
-    expect(component.selectedFile).toEqual(new SelectedFile());
-
-    // Verify setTimeout is called and loadPreviousDataset will be called after timeout
-    expect(window.setTimeout).toHaveBeenCalled();
-    setTimeout(() => {
-      expect(component.loadPreviousDataset).toHaveBeenCalledWith(component.selectedDataset);
-    }, 6000);
-
+    expect(component.selectedFile.status).toEqual(
+      new CheckResult(CHECK_CODE.UNCHECKED, 'Error while checking DataSet! Failed to connect to the server.')
+    );
     expect(component.showSpinner).toBe(false);
   });
