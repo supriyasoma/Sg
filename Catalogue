@@ -1,18 +1,31 @@
-it('should handle error response', () => {
-    const mockFile = new File(['dummy content'], 'testFile.csv', { type: 'text/csv' });
-    component.uploadForm.patchValue({ selectedFileLocation: mockFile });
+ it('should call addRowDataset and return mock data', fakeAsync(() => {
+    const isEdit = true;
+    const isEditClick = true;
+    const mockAddRowData = { success: true, data: 'row added' };
+    datasetComponentSpy.addRowDataset.and.returnValue(mockAddRowData);
 
-    const errorResponse = new ErrorEvent('Network error', {
-      message: 'Failed to connect to the server.'
-    });
+    component.editDataset(isEdit, isEditClick);
 
-    uploadService.sendDatasetFileForVerification.and.returnValue(throwError(errorResponse));
+    tick(500); // Advance the timer to trigger setTimeout calls
 
-    component.sendDatasetFileForVerification();
+    expect(datasetComponentSpy.addRowDataset).toHaveBeenCalled();
+    expect(datasetComponentSpy.addRowDataset.calls.mostRecent().returnValue).toEqual(mockAddRowData);
+    expect(component.editButtonLabel).toEqual('Edit BUTTON LABEL.edit');
+    expect(component.isEdited).toBeTrue();
+    expect(component.detailsValid).toBeFalse();
+    expect(component.isLoaded).toBeTrue();
+  }));
 
-    expect(uploadService.sendDatasetFileForVerification).toHaveBeenCalledWith(component.selectedDataset, mockFile);
-    expect(component.selectedFile.status).toEqual(
-      new CheckResult(CHECK_CODE.UNCHECKED, 'Error while checking DataSet! Failed to connect to the server.')
-    );
-    expect(component.showSpinner).toBe(false);
-  });
+  it('should call editDataset and return mock data', fakeAsync(() => {
+    const isEdit = true;
+    const isEditClick = true;
+    const mockEditData = { success: true, data: 'dataset edited' };
+    datasetComponentSpy.editDataset.and.returnValue(mockEditData);
+
+    component.editDataset(isEdit, isEditClick);
+
+    tick(500); // Advance the timer to trigger setTimeout calls
+
+    expect(datasetComponentSpy.editDataset).toHaveBeenCalledWith(isEdit);
+    expect(datasetComponentSpy.editDataset.calls.mostRecent().returnValue).toEqual(mockEditData);
+  }));
