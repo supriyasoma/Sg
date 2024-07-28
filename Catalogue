@@ -1,27 +1,35 @@
-it('should handle the case where the response does not have expected data', () => {
-  const mockFile = new File(['dummy content'], 'testFile.csv', { type: 'text/csv' });
-  component.uploadForm.patchValue({ selectedFileLocation: mockFile });
+it('should handle response without expected data', () => {
+    // Mocking file and form control
+    const mockFile = new File(['dummy content'], 'testFile.csv', { type: 'text/csv' });
+    component.uploadForm.patchValue({ selectedFileLocation: mockFile });
 
-  // Mock response without the `response` property or with unexpected structure
-  const mockApiCheckResponseWithoutData = new HttpResponse<ApiCheckResponse>({
-    body: { statusCode: 200, errorMessage: '', response: null },
-    status: 200,
-    statusText: 'OK'
+    // Mocking the API response without the expected data
+    const mockApiCheckResponseWithoutData = new HttpResponse<ApiCheckResponse>({
+      body: { statusCode: 200, errorMessage: '', response: null },
+      status: 200,
+      statusText: 'OK'
+    });
+
+    uploadService.sendDatasetFileForVerification.and.returnValue(of(mockApiCheckResponseWithoutData));
+
+    spyOn(component, 'editDataset');
+    spyOn(component, 'loadPreviousDataset');
+    spyOn(window, 'setTimeout'); // Spy on setTimeout to control its behavior in the test
+
+    component.sendDatasetFileForVerification();
+
+    // Verifications
+    expect(uploadService.sendDatasetFileForVerification).toHaveBeenCalledWith(component.selectedDataset, mockFile);
+    expect(component.alertValue).toEqual(JSON.parse(JSON.stringify(alertMessagesValues.load.error)));
+
+    expect(component.editDataset).toHaveBeenCalledWith(false, false);
+    expect(component.selectedFile).toEqual(new SelectedFile());
+
+    // Verify setTimeout is called and loadPreviousDataset will be called after timeout
+    expect(window.setTimeout).toHaveBeenCalled();
+    setTimeout(() => {
+      expect(component.loadPreviousDataset).toHaveBeenCalledWith(component.selectedDataset);
+    }, 6000);
+
+    expect(component.showSpinner).toBe(false);
   });
-
-  uploadService.sendDatasetFileForVerification.and.returnValue(of(mockApiCheckResponseWithoutData));
-
-  spyOn(window, 'setTimeout'); // Spy on setTimeout to control its behavior in the test
-
-  component.sendDatasetFileForVerification();
-
-  expect(uploadService.sendDatasetFileForVerification).toHaveBeenCalledWith(component.selectedDataset, mockFile);
-  expect(component.alertValue).toEqual(JSON.parse(JSON.stringify(alertMessagesValues.load.error)));
-
-  // Check if the setTimeout function is called
-  expect(window.setTimeout).toHaveBeenCalled();
-
-  // Verify that the state is reset correctly
-  expect(component.selectedFile).toEqual(new SelectedFile());
-  expect(component.showSpinner).toBe(false);
-});
