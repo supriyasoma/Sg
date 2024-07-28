@@ -1,15 +1,1 @@
-const mockApiResponse: ApiCheckResponse = {
-      statusCode: 200,
-      errorMessage: '',
-      response: {
-        validLines: 10,
-        nonValidLines: 0,
-        errorsDetails: [],
-        resultDetails: ['Data processed successfully']
-      }
-    };
-
-    httpClientSpy.post.and.returnValue(of(new HttpResponse<ApiCheckResponse>({
-      body: mockApiResponse,
-      status: 200,
-    })));
+const context = require.context('./', true, /^(?!.*(service|exclude)).*\.spec\.ts$/);
