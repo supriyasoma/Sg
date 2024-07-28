@@ -1,1 +1,67 @@
-const context = require.context('./', true, /^(?!.*(service|exclude)).*\.spec\.ts$/);
+import { TestBed } from '@angular/core/testing';
+import { DatasetEditComponent } from './dataset-edit.component';
+import { UploadService } from './upload.service';
+import { AuthentificationService } from './authentification.service';
+import { DatasetInfoService } from './dataset-info.service';
+import { Referentials } from './referentials';
+
+describe('DatasetEditComponent', () => {
+  let component: DatasetEditComponent;
+  let fixture: ComponentFixture<DatasetEditComponent>;
+  let uploadService: UploadService;
+  let authentificationService: AuthentificationService;
+  let datasetInfoService: DatasetInfoService;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      declarations: [DatasetEditComponent],
+      providers: [
+        { provide: UploadService, useValue: {} },
+        { provide: AuthentificationService, useValue: {} },
+        { provide: DatasetInfoService, useValue: {} },
+        { provide: Referentials, useValue: {} }
+      ]
+    })
+      .compileComponents();
+  });
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(DatasetEditComponent);
+    component = fixture.componentInstance;
+    uploadService = TestBed.inject(UploadService);
+    authentificationService = TestBed.inject(AuthentificationService);
+    datasetInfoService = TestBed.inject(DatasetInfoService);
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should set columnDefs on init', () => {
+    spyOn(datasetInfoService, 'getColDefByReferentialId').and.returnValue([]);
+    component.ngOnInit();
+    expect(component.columnDefs).toEqual([]);
+  });
+
+  it('should set currentUserName on init', () => {
+    spyOn(authentificationService, 'fetchUserfame').and.returnValue('John Doe');
+    component.ngOnInit();
+    expect(component.currentUserName).toEqual('John Doe');
+  });
+
+  it('should set validationDate on init', () => {
+    const date = new Date();
+    spyOn(date, 'toISOString').and.returnValue('2022-07-28T14:30:00.000Z');
+    component.ngOnInit();
+    expect(component.validationDate).toEqual('2022-07-28 14:30:00');
+  });
+
+  it('should set exportFileName on init', () => {
+    spyOn(datasetInfoService, 'currentReferentialld').and.returnValue('referentialId');
+    spyOn(referentials, 'referentialstist').and.returnValue([{ id: 'referentialId', name: 'Export File Name' }]);
+    component.ngOnInit();
+    expect(component.exportFileName).toEqual('Export File Name');
+  });
+
+  // Add more test cases for other component functionality
+});
