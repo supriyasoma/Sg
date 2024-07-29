@@ -1,75 +1,87 @@
 import { TestBed } from '@angular/core/testing';
-import { DatasetInfoService } from './dataset-info.service'; // Update with the correct path
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { AuthenticationService } from './authentication.service';
+import { HttpClient } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 
-describe('DatasetInfoService', () => {
-  let service: DatasetInfoService;
+// Mock environment and token claims
+const mockAppEnv = { sgConnectBaseUrl: 'https://api.example.com' };
+const mockClaims = { sub: 'john.doe' }; // Example claim
+
+describe('AuthenticationService', () => {
+  let service: AuthenticationService;
+  let httpTestingController: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(DatasetInfoService);
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        { provide: 'AppEnv', useValue: mockAppEnv },
+        AuthenticationService,
+      ],
+    });
+
+    service = TestBed.inject(AuthenticationService);
+    httpTestingController = TestBed.inject(HttpTestingController);
+
+    // Mock the getIdTokenClaims method
+    (service as any).appEnv.sgetIdTokenClaims = jest.fn().mockReturnValue(of(mockClaims));
+  });
+
+  afterEach(() => {
+    httpTestingController.verify();
   });
 
   it('should be created', () => {
     expect(service).toBeTruthy();
   });
 
-  it('should set and get the username', (done: DoneFn) => {
-    const testUsername = 'testUser';
-    service.setUsername(testUsername);
-    
-    service.currentUsername.subscribe(username => {
-      expect(username).toBe(testUsername);
-      done();
-    });
+  it('should fetch and return the username', () => {
+    const expectedUsername = 'John Doe';
+
+    const username = service.fetchUserName();
+
+    expect(username).toBe(expectedUsername);
   });
 
-  it('should set and get the referential ID', (done: DoneFn) => {
-    const testReferentialId = '12345';
-    service.updateReferentialId(testReferentialId);
-    
-    service.currentReferentialId.subscribe(referentialId => {
-      expect(referentialId).toBe(testReferentialId);
-      done();
+  it('should fetch user info and return it', () => {
+    const mockUserInfo = { id: 1, name: 'John Doe' };
+
+    service.fetchUserInfo().subscribe((data) => {
+      expect(data).toEqual(mockUserInfo);
     });
+
+    const req = httpTestingController.expectOne(`${mockAppEnv.sgConnectBaseUrl}/auth2/userinfo`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockUserInfo);
   });
 
-  it('should set and get the validate date', (done: DoneFn) => {
-    const testDate = '2024-07-29';
-    service.updateValidateDate(testDate);
-    
-    service.currentValidateDate.subscribe(validateDate => {
-      expect(validateDate).toBe(testDate);
-      done();
+  it('should handle error when fetching user info', () => {
+    const errorMessage = 'Error fetching user info';
+
+    service.fetchUserInfo().subscribe({
+      next: () => fail('should have failed with error'),
+      error: (error) => {
+        expect(error.message).toContain(errorMessage);
+      },
     });
+
+    const req = httpTestingController.expectOne(`${mockAppEnv.sgConnectBaseUrl}/auth2/userinfo`);
+    expect(req.request.method).toBe('GET');
+    req.flush(errorMessage, { status: 500, statusText: 'Server Error' });
   });
 
-  it('should set and get the dataset versions', (done: DoneFn) => {
-    const testVersions = ['v1', 'v2', 'v3'];
-    service.updateDatasetVersions(testVersions);
-    
-    service.currentDatasetVersions.subscribe(versions => {
-      expect(versions).toEqual(testVersions);
-      done();
-    });
+  it('should check if user has the specified permission', () => {
+    const mockUser = { userAuthorization: [{ permissions: ['read', 'write'] }] };
+    const permissionToCheck = 'read';
+
+    const result = service.hasPermission(mockUser, permissionToCheck);
+
+    expect(result).toBe(true);
   });
 
-  it('should set and get the selected version', (done: DoneFn) => {
-    const testSelectedVersion = 'v2';
-    service.updateSelectedVersion(testSelectedVersion);
-    
-    service.currentSelectedVersion.subscribe(selectedVersion => {
-      expect(selectedVersion).toBe(testSelectedVersion);
-      done();
-    });
-  });
-
-  it('should set and get the dataset content', (done: DoneFn) => {
-    const testContent = { data: 'some content' };
-    service.updateDatasetContent(testContent);
-    
-    service.currentDatasetContent.subscribe(content => {
-      expect(content).toEqual(testContent);
-      done();
-    });
+  it('should return undefined if user or permissions are not provided', () => {
+    expect(service.hasPermission(undefined as any, 'read')).toBeUndefined();
+    expect(service.hasPermission({}, 'read')).toBeUndefined();
   });
 });
