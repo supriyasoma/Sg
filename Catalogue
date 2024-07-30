@@ -1,87 +1,39 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { AuthenticationService } from './authentication.service';
-import { HttpClient } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { CheckResultRenderer } from './check-result-renderer';
+import { ICellRendererParams } from 'ag-grid-angular';
 
-// Mock environment and token claims
-const mockAppEnv = { sgConnectBaseUrl: 'https://api.example.com' };
-const mockClaims = { sub: 'john.doe' }; // Example claim
-
-describe('AuthenticationService', () => {
-  let service: AuthenticationService;
-  let httpTestingController: HttpTestingController;
+describe('CheckResultRenderer', () => {
+  let component: CheckResultRenderer;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [
-        { provide: 'AppEnv', useValue: mockAppEnv },
-        AuthenticationService,
-      ],
-    });
-
-    service = TestBed.inject(AuthenticationService);
-    httpTestingController = TestBed.inject(HttpTestingController);
-
-    // Mock the getIdTokenClaims method
-    (service as any).appEnv.sgetIdTokenClaims = jest.fn().mockReturnValue(of(mockClaims));
+    component = new CheckResultRenderer();
   });
 
-  afterEach(() => {
-    httpTestingController.verify();
+  it('should initialize correctly', () => {
+    const params: ICellRendererParams = {
+      value: [true, 'Error: Something went wrong'],
+      // Add other necessary properties if needed
+    } as any;
+
+    component.agInit(params);
+
+    expect(component.isValid).toBe(true);
+    expect(component.message).toBe('Something went wrong');
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  it('should refresh correctly', () => {
+    const params: ICellRendererParams = {
+      value: [false, 'Warning: Check your input'],
+      // Add other necessary properties if needed
+    } as any;
+
+    component.refresh(params);
+
+    expect(component.isValid).toBe(false);
+    expect(component.message).toBe('Check your input');
   });
 
-  it('should fetch and return the username', () => {
-    const expectedUsername = 'John Doe';
-
-    const username = service.fetchUserName();
-
-    expect(username).toBe(expectedUsername);
-  });
-
-  it('should fetch user info and return it', () => {
-    const mockUserInfo = { id: 1, name: 'John Doe' };
-
-    service.fetchUserInfo().subscribe((data) => {
-      expect(data).toEqual(mockUserInfo);
-    });
-
-    const req = httpTestingController.expectOne(`${mockAppEnv.sgConnectBaseUrl}/auth2/userinfo`);
-    expect(req.request.method).toBe('GET');
-    req.flush(mockUserInfo);
-  });
-
-  it('should handle error when fetching user info', () => {
-    const errorMessage = 'Error fetching user info';
-
-    service.fetchUserInfo().subscribe({
-      next: () => fail('should have failed with error'),
-      error: (error) => {
-        expect(error.message).toContain(errorMessage);
-      },
-    });
-
-    const req = httpTestingController.expectOne(`${mockAppEnv.sgConnectBaseUrl}/auth2/userinfo`);
-    expect(req.request.method).toBe('GET');
-    req.flush(errorMessage, { status: 500, statusText: 'Server Error' });
-  });
-
-  it('should check if user has the specified permission', () => {
-    const mockUser = { userAuthorization: [{ permissions: ['read', 'write'] }] };
-    const permissionToCheck = 'read';
-
-    const result = service.hasPermission(mockUser, permissionToCheck);
-
-    expect(result).toBe(true);
-  });
-
-  it('should return undefined if user or permissions are not provided', () => {
-    expect(service.hasPermission(undefined as any, 'read')).toBeUndefined();
-    expect(service.hasPermission({}, 'read')).toBeUndefined();
+  it('should handle message correctly', () => {
+    expect(component['handleMessage']('Info: All good')).toBe('All good');
+    expect(component['handleMessage']('Error')).toBe('');
   });
 });
