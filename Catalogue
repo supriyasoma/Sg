@@ -1,45 +1,51 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { UploadService } from './upload.service'; // Adjust the path as needed
-import { environment } from '../../../environments/environment';
-import { HttpResponse } from '@angular/common/http';
-import { ApiCheckResponse } from 'src/app/models/api-check-response';
+it('should return CHECK_CODE.KO when there are non-valid lines', () => {
+      const mockResponse = {
+        body: {
+          response: {
+            nonValidLines: [1, 2],
+            resultDetails: ['Detail1', 'Detail2'],
+            validLines: [3, 4],
+            errorsDetails: ['Error1', 'Error2']
+          }
+        }
+      } as HttpResponse<ApiCheckResponse>;
 
-describe('UploadService', () => {
-  let service: UploadService;
-  let httpMock: HttpTestingController;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [UploadService]
+      const result = createCheckResultFromResponse(mockResponse);
+      expect(result.code).toBe(CHECK_CODE.KO);
+      expect(result.message).toBe('Errors in lines: Error1, Error2');
+      expect(result.details).toEqual(['Detail1', 'Detail2']);
     });
 
-    service = TestBed.inject(UploadService);
-    httpMock = TestBed.inject(HttpTestingController);
-  });
+    it('should return CHECK_CODE.OK when dataset is valid', () => {
+      const mockResponse = {
+        body: {
+          response: {
+            nonValidLines: [],
+            resultDetails: ['Valid Detail'],
+            validLines: [1, 2]
+          }
+        }
+      } as HttpResponse<ApiCheckResponse>;
 
-  afterEach(() => {
-    httpMock.verify(); // Ensure no outstanding requests
-  });
-
-  it('should send dataset file for verification', () => {
-    const dummyResponse: ApiCheckResponse = { /* mock response data */ };
-    const referentialId = '123';
-    const referentialFile = new File(['content'], 'testfile.txt');
-
-    service.sendDatasetFileForVerification(referentialId, referentialFile).subscribe(response => {
-      expect(response.body).toEqual(dummyResponse);
+      const result = createCheckResultFromResponse(mockResponse);
+      expect(result.code).toBe(CHECK_CODE.OK);
+      expect(result.message).toBe('Dataset file is valid');
+      expect(result.details).toEqual(['Valid Detail']);
     });
 
-    const req = httpMock.expectOne(
-      `${environment.serviceBaseUrl}/api/v1/referentials/checks/${referentialId}`
-    );
+    it('should return CHECK_CODE.NO when dataset is empty', () => {
+      const mockResponse = {
+        body: {
+          response: {
+            nonValidLines: [],
+            resultDetails: [],
+            validLines: []
+          }
+        }
+      } as HttpResponse<ApiCheckResponse>;
 
-    expect(req.request.method).toBe('POST');
-    expect(req.request.headers.get('Accept')).toContain('application/json');
-    expect(req.request.body instanceof FormData).toBeTrue();
-
-    req.flush(dummyResponse, { status: 200, statusText: 'OK' });
-  });
-});
+      const result = createCheckResultFromResponse(mockResponse);
+      expect(result.code).toBe(CHECK_CODE.NO);
+      expect(result.message).toBe('Dataset is empty');
+      expect(result.details).toEqual([]);
+    });
