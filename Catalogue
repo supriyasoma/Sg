@@ -1,21 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { InformationService } from './information.service'; // Adjust the path as needed
-import { environment } from 'src/environments/environment';
-import { ReferentialInfo } from './information-tab.model';
+import { UploadService } from './upload.service'; // Adjust the path as needed
+import { environment } from '../../../environments/environment';
+import { HttpResponse } from '@angular/common/http';
+import { ApiCheckResponse } from 'src/app/models/api-check-response';
 
-describe('InformationService', () => {
-  let service: InformationService;
+describe('UploadService', () => {
+  let service: UploadService;
   let httpMock: HttpTestingController;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [InformationService]
+      providers: [UploadService]
     });
 
-    service = TestBed.inject(InformationService);
+    service = TestBed.inject(UploadService);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -23,40 +23,23 @@ describe('InformationService', () => {
     httpMock.verify(); // Ensure no outstanding requests
   });
 
-  it('should fetch referential information', () => {
-    const dummyData = { id: '123', name: 'Test Data' };
+  it('should send dataset file for verification', () => {
+    const dummyResponse: ApiCheckResponse = { /* mock response data */ };
     const referentialId = '123';
+    const referentialFile = new File(['content'], 'testfile.txt');
 
-    service.getReferentialInformation(referentialId).subscribe(response => {
-      expect(response.body).toEqual(dummyData);
+    service.sendDatasetFileForVerification(referentialId, referentialFile).subscribe(response => {
+      expect(response.body).toEqual(dummyResponse);
     });
 
     const req = httpMock.expectOne(
-      `${environment.serviceBaseUrl}/api/v1/referentials/informations?referentialId=${referentialId}`
-    );
-
-    expect(req.request.method).toBe('GET');
-    expect(req.request.headers.get('Accept')).toContain('application/json');
-
-    req.flush(dummyData, { status: 200, statusText: 'OK' });
-  });
-
-  it('should save referential information', () => {
-    const referentialInfo: ReferentialInfo = { referentialId: '123', name: 'New Data' };
-    const responseMessage = 'Information saved successfully';
-
-    service.saveReferentialInformation(referentialInfo).subscribe(response => {
-      expect(response.body).toBe(responseMessage);
-    });
-
-    const req = httpMock.expectOne(
-      `${environment.serviceBaseUrl}/api/v1/referentials/informations`
+      `${environment.serviceBaseUrl}/api/v1/referentials/checks/${referentialId}`
     );
 
     expect(req.request.method).toBe('POST');
     expect(req.request.headers.get('Accept')).toContain('application/json');
-    expect(req.request.body).toEqual(referentialInfo);
+    expect(req.request.body instanceof FormData).toBeTrue();
 
-    req.flush(responseMessage, { status: 200, statusText: 'OK' });
+    req.flush(dummyResponse, { status: 200, statusText: 'OK' });
   });
 });
