@@ -1,27 +1,62 @@
-describe('onInputBoxChanged', () => {
-  let mockInstance: jasmine.SpyObj<any>;
+import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { InformationService } from './information.service'; // Adjust the path as needed
+import { environment } from 'src/environments/environment';
+import { ReferentialInfo } from './information-tab.model';
+
+describe('InformationService', () => {
+  let service: InformationService;
+  let httpMock: HttpTestingController;
 
   beforeEach(() => {
-    // Create a new spy object for each test
-    mockInstance = jasmine.createSpyObj('parentFilterInstance', ['onFloatingFilterChanged']);
-    component.params = {
-      parentFilterInstance: (callback: (instance: any) => void) => callback(mockInstance),
-    } as any; // Casting as `any` to mock the type
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [InformationService]
+    });
+
+    service = TestBed.inject(InformationService);
+    httpMock = TestBed.inject(HttpTestingController);
   });
 
-  it('should call onFloatingFilterChanged with null values if showErrorsOnly is true', () => {
-    component.showErrorsOnly = true;
-
-    component.onInputBoxChanged();
-
-    expect(mockInstance.onFloatingFilterChanged).toHaveBeenCalledWith(null, null);
+  afterEach(() => {
+    httpMock.verify(); // Ensure no outstanding requests
   });
 
-  it('should call onFloatingFilterChanged with "contains" and showErrorsOnly values if showErrorsOnly is false', () => {
-    component.showErrorsOnly = false;
+  it('should fetch referential information', () => {
+    const dummyData = { id: '123', name: 'Test Data' };
+    const referentialId = '123';
 
-    component.onInputBoxChanged();
+    service.getReferentialInformation(referentialId).subscribe(response => {
+      expect(response.body).toEqual(dummyData);
+    });
 
-    expect(mockInstance.onFloatingFilterChanged).toHaveBeenCalledWith('contains', false);
+    const req = httpMock.expectOne(
+      `${environment.serviceBaseUrl}/api/v1/referentials/informations?referentialId=${referentialId}`
+    );
+
+    expect(req.request.method).toBe('GET');
+    expect(req.request.headers.get('Accept')).toContain('application/json');
+
+    req.flush(dummyData, { status: 200, statusText: 'OK' });
+  });
+
+  it('should save referential information', () => {
+    const referentialInfo: ReferentialInfo = { referentialId: '123', name: 'New Data' };
+    const responseMessage = 'Information saved successfully';
+
+    service.saveReferentialInformation(referentialInfo).subscribe(response => {
+      expect(response.body).toBe(responseMessage);
+    });
+
+    const req = httpMock.expectOne(
+      `${environment.serviceBaseUrl}/api/v1/referentials/informations`
+    );
+
+    expect(req.request.method).toBe('POST');
+    expect(req.request.headers.get('Accept')).toContain('application/json');
+    expect(req.request.body).toEqual(referentialInfo);
+
+    req.flush(responseMessage, { status: 200, statusText: 'OK' });
   });
 });
