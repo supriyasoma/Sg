@@ -1,35 +1,85 @@
-    it('should call the correct API endpoint with the correct headers and parameters', () => {
-      const mockResponse = 'some dataset content';
-      const referentialId = '12345';
-
-      service.getDatasetContent(referentialId).subscribe(response => {
-        expect(response.body).toEqual(mockResponse);
+    it('should map HTTP response to dataset correctly', () => {
+      const mockResponse = new HttpResponse({
+        body: {
+          response: [
+            {
+              fileName: 'test.csv',
+              version: '1.0',
+              user: 'John Doe',
+              date: '2024-01-01T12:00:00',
+              data: 'some data',
+              referentialId: 'ref123'
+            },
+            // Add more mock data if needed
+          ]
+        },
+        status: 200,
+        statusText: 'OK'
       });
 
-      const req = httpMock.expectOne(req => req.url === `${environment.serviceBaseUrl}${service.versionFeatureUri}`);
-      expect(req.request.method).toBe('GET');
-      expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
-      expect(req.request.params.get('referentialId')).toBe(referentialId);
+      const result = service.mapHttpResponseToDataSet(mockResponse);
 
-      req.flush(mockResponse);
+      expect(result).toEqual([{
+        fileName: 'test.csv',
+        version: '1.0',
+        user: 'John Doe',
+        date: '2024-01-01T12:00:00',
+        data: 'some data',
+        referentialId: 'ref123'
+      }]);
+    });
+
+    it('should return an empty array if the response is not OK', () => {
+      const mockResponse = new HttpResponse({
+        body: { response: [] },
+        status: 500,
+        statusText: 'Internal Server Error'
+      });
+
+      const result = service.mapHttpResponseToDataSet(mockResponse);
+
+      expect(result).toEqual([]);
     });
   });
 
-  describe('setDatasetContent', () => {
-    it('should call the correct API endpoint with the correct headers and body', () => {
-      const mockResponse = 'success';
-      const referentialId = '12345';
-      const datasetContent = { data: 'example content' };
-
-      service.setDatasetContent(referentialId, datasetContent).subscribe(response => {
-        expect(response.body).toEqual(mockResponse);
+  describe('mapHttpResponseToAuditDataSet', () => {
+    it('should map HTTP response to audit dataset correctly', () => {
+      const mockResponse = new HttpResponse({
+        body: {
+          response: [
+            {
+              version: '1.0',
+              author: 'John Doe',
+              date: '2024-01-01T12:00:00',
+              status: 'Completed',
+              dateInLucid: '2024-01-01T13:00:00'
+            },
+            // Add more mock data if needed
+          ]
+        },
+        status: 200,
+        statusText: 'OK'
       });
 
-      const req = httpMock.expectOne(req => req.url === `${environment.serviceBaseUrl}${service.versionFeatureUri}/${referentialId}`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
-      expect(req.request.headers.get('Content-Type')).toBe('application/json');
-      expect(req.request.body).toBe(JSON.stringify(datasetContent));
+      const result = service.mapHttpResponseToAuditDataSet(mockResponse);
 
-      req.flush(mockResponse);
+      expect(result).toEqual([{
+        version: '1.0',
+        author: 'John Doe',
+        date: '2024-01-01 12:00:00',
+        status: 'Completed',
+        dateInLucid: '2024-01-01 13:00:00'
+      }]);
+    });
+
+    it('should return an empty array if the response is not OK', () => {
+      const mockResponse = new HttpResponse({
+        body: { response: [] },
+        status: 500,
+        statusText: 'Internal Server Error'
+      });
+
+      const result = service.mapHttpResponseToAuditDataSet(mockResponse);
+
+      expect(result).toEqual([]);
     });
