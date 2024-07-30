@@ -1,51 +1,35 @@
-it('should generate a line string from RowNode data, excluding certain fields', () => {
-      const mockRowNode = {
-        data: {
-          id: 1,
-          name: 'Alice',
-          age: 30,
-          checkResult: 'Pass',
-          previousValue: 'OldValue'
-        }
-      } as unknown as RowNode;
+    it('should call the correct API endpoint with the correct headers and parameters', () => {
+      const mockResponse = 'some dataset content';
+      const referentialId = '12345';
 
-      const line = service.getLineFromRowNode(mockRowNode);
-
-      expect(line).toBe('1,Alice,30');
-    });
-
-    it('should handle RowNode data with missing or excluded values correctly', () => {
-      const mockRowNode = {
-        data: {
-          id: 2,
-          name: 'Bob',
-          age: null,
-          checkResult: 'Fail',
-          previousValue: null
-        }
-      } as unknown as RowNode;
-
-      const line = service.getLineFromRowNode(mockRowNode);
-
-      expect(line).toBe('2,Bob,');
-    });
-
-    it('should gather all row data from GridApi as strings', () => {
-      const mockGridApi = jasmine.createSpyObj('GridApi', ['forEachNode']);
-      const mockData = [
-        { data: { id: 1, name: 'Alice', age: 30 } },
-        { data: { id: 2, name: 'Bob', age: 25 } }
-      ];
-
-      mockGridApi.forEachNode.and.callFake((callback: (node: any) => void) => {
-        mockData.forEach(callback);
+      service.getDatasetContent(referentialId).subscribe(response => {
+        expect(response.body).toEqual(mockResponse);
       });
 
-      const rowData = service.getRowDataFromGrid(mockGridApi as unknown as GridApi);
+      const req = httpMock.expectOne(req => req.url === `${environment.serviceBaseUrl}${service.versionFeatureUri}`);
+      expect(req.request.method).toBe('GET');
+      expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
+      expect(req.request.params.get('referentialId')).toBe(referentialId);
 
-      expect(rowData.length).toBe(2);
-      expect(rowData).toEqual([
-        mockData[0].data,
-        mockData[1].data,
-      ]);
+      req.flush(mockResponse);
+    });
+  });
+
+  describe('setDatasetContent', () => {
+    it('should call the correct API endpoint with the correct headers and body', () => {
+      const mockResponse = 'success';
+      const referentialId = '12345';
+      const datasetContent = { data: 'example content' };
+
+      service.setDatasetContent(referentialId, datasetContent).subscribe(response => {
+        expect(response.body).toEqual(mockResponse);
+      });
+
+      const req = httpMock.expectOne(req => req.url === `${environment.serviceBaseUrl}${service.versionFeatureUri}/${referentialId}`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
+      expect(req.request.headers.get('Content-Type')).toBe('application/json');
+      expect(req.request.body).toBe(JSON.stringify(datasetContent));
+
+      req.flush(mockResponse);
     });
