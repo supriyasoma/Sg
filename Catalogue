@@ -1,51 +1,50 @@
-it('should return CHECK_CODE.KO when there are non-valid lines', () => {
-      const mockResponse = {
-        body: {
-          response: {
-            nonValidLines: [1, 2],
-            resultDetails: ['Detail1', 'Detail2'],
-            validLines: [3, 4],
-            errorsDetails: ['Error1', 'Error2']
-          }
-        }
-      } as HttpResponse<ApiCheckResponse>;
+class MockGridApi {
+      private rowData: any[];
 
-      const result = createCheckResultFromResponse(mockResponse);
-      expect(result.code).toBe(CHECK_CODE.KO);
-      expect(result.message).toBe('Errors in lines: Error1, Error2');
-      expect(result.details).toEqual(['Detail1', 'Detail2']);
+      constructor(rowData: any[]) {
+        this.rowData = rowData;
+      }
+
+      getRowNode(id: string) {
+        return { data: this.rowData[Number(id)] };
+      }
+
+      forEachNode(callback: (node: any) => void) {
+        this.rowData.forEach((data, index) => callback({ data, id: String(index) }));
+      }
+    }
+
+    it('should generate CSV file definition with header using service', () => {
+      const mockData = [
+        { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' },
+        { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' }
+      ];
+      const mockGridApi = new MockGridApi(mockData);
+
+      spyOn(service, 'getCSVFileDefinitionFromGridDataWithHeader').and.callThrough();
+
+      const csvFileDefinition = service.getCSVFileDefinitionFromGridDataWithHeader('test.csv', mockGridApi as unknown as GridApi);
+
+      expect(service.getCSVFileDefinitionFromGridDataWithHeader).toHaveBeenCalled();
+      expect(csvFileDefinition.fileName).toBe('test.csv');
+      expect(csvFileDefinition.contents[0]).toBe('Id,Name,Age');
+      expect(csvFileDefinition.contents[1]).toBe('1,Alice,30');
+      expect(csvFileDefinition.contents[2]).toBe('2,Bob,25');
     });
 
-    it('should return CHECK_CODE.OK when dataset is valid', () => {
-      const mockResponse = {
-        body: {
-          response: {
-            nonValidLines: [],
-            resultDetails: ['Valid Detail'],
-            validLines: [1, 2]
-          }
-        }
-      } as HttpResponse<ApiCheckResponse>;
+    it('should generate CSV file definition without header using service', () => {
+      const mockData = [
+        { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' },
+        { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' }
+      ];
+      const mockGridApi = new MockGridApi(mockData);
 
-      const result = createCheckResultFromResponse(mockResponse);
-      expect(result.code).toBe(CHECK_CODE.OK);
-      expect(result.message).toBe('Dataset file is valid');
-      expect(result.details).toEqual(['Valid Detail']);
-    });
+      spyOn(service, 'getCSVFileDefinitionFromGridData').and.callThrough();
 
-    it('should return CHECK_CODE.NO when dataset is empty', () => {
-      const mockResponse = {
-        body: {
-          response: {
-            nonValidLines: [],
-            resultDetails: [],
-            validLines: []
-          }
-        }
-      } as HttpResponse<ApiCheckResponse>;
+      const csvFileDefinition = service.getCSVFileDefinitionFromGridData('test.csv', mockGridApi as unknown as GridApi);
 
-      const result = createCheckResultFromResponse(mockResponse);
-      expect(result.code).toBe(CHECK_CODE.NO);
-      expect(result.message).toBe('Dataset is empty');
-      expect(result.details).toEqual([]);
+      expect(service.getCSVFileDefinitionFromGridData).toHaveBeenCalled();
+      expect(csvFileDefinition.fileName).toBe('test.csv');
+      expect(csvFileDefinition.contents[0]).toBe('1,Alice,30,Pass');
+      expect(csvFileDefinition.contents[1]).toBe('2,Bob,25,Fail');
     });
