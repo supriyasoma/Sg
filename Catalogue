@@ -1,31 +1,20 @@
-class MockGridApi {
-      private rowData: any[];
-
-      constructor(rowData: any[]) {
-        this.rowData = rowData;
-      }
-
-      getRowNode(id: string) {
-        return { data: this.rowData[Number(id)] };
-      }
-
-      forEachNode(callback: (node: any) => void) {
-        this.rowData.forEach((data, index) => callback({ data, id: String(index) }));
-      }
-    }
-
     it('should generate CSV file definition with header using service', () => {
+      const mockGridApi = jasmine.createSpyObj('GridApi', ['getRowNode', 'forEachNode']);
+      const mockRowNode = { data: { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' } };
       const mockData = [
-        { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' },
-        { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' }
+        { data: { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' } },
+        { data: { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' } }
       ];
-      const mockGridApi = new MockGridApi(mockData);
 
-      spyOn(service, 'getCSVFileDefinitionFromGridDataWithHeader').and.callThrough();
+      mockGridApi.getRowNode.and.returnValue(mockRowNode);
+      mockGridApi.forEachNode.and.callFake((callback: (node: any) => void) => {
+        mockData.forEach(callback);
+      });
 
       const csvFileDefinition = service.getCSVFileDefinitionFromGridDataWithHeader('test.csv', mockGridApi as unknown as GridApi);
 
-      expect(service.getCSVFileDefinitionFromGridDataWithHeader).toHaveBeenCalled();
+      expect(mockGridApi.getRowNode).toHaveBeenCalledWith('0');
+      expect(mockGridApi.forEachNode).toHaveBeenCalled();
       expect(csvFileDefinition.fileName).toBe('test.csv');
       expect(csvFileDefinition.contents[0]).toBe('Id,Name,Age');
       expect(csvFileDefinition.contents[1]).toBe('1,Alice,30');
@@ -33,17 +22,19 @@ class MockGridApi {
     });
 
     it('should generate CSV file definition without header using service', () => {
+      const mockGridApi = jasmine.createSpyObj('GridApi', ['forEachNode']);
       const mockData = [
-        { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' },
-        { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' }
+        { data: { id: 1, name: 'Alice', age: 30, checkResult: 'Pass' } },
+        { data: { id: 2, name: 'Bob', age: 25, checkResult: 'Fail' } }
       ];
-      const mockGridApi = new MockGridApi(mockData);
 
-      spyOn(service, 'getCSVFileDefinitionFromGridData').and.callThrough();
+      mockGridApi.forEachNode.and.callFake((callback: (node: any) => void) => {
+        mockData.forEach(callback);
+      });
 
       const csvFileDefinition = service.getCSVFileDefinitionFromGridData('test.csv', mockGridApi as unknown as GridApi);
 
-      expect(service.getCSVFileDefinitionFromGridData).toHaveBeenCalled();
+      expect(mockGridApi.forEachNode).toHaveBeenCalled();
       expect(csvFileDefinition.fileName).toBe('test.csv');
       expect(csvFileDefinition.contents[0]).toBe('1,Alice,30,Pass');
       expect(csvFileDefinition.contents[1]).toBe('2,Bob,25,Fail');
