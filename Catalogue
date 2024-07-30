@@ -1,39 +1,73 @@
-import { CheckResultRenderer } from './check-result-renderer';
-import { ICellRendererParams } from 'ag-grid-angular';
+import { TestBed } from '@angular/core/testing';
+import { CheckResultFilterComponent } from './check-result-filter.component';
+import { IFloatingFilterParams, IFilterDef, ISimpleFilter } from 'ag-grid-community';
 
-describe('CheckResultRenderer', () => {
-  let component: CheckResultRenderer;
+describe('CheckResultFilterComponent', () => {
+  let component: CheckResultFilterComponent;
+  let fixture: ComponentFixture<CheckResultFilterComponent>;
 
   beforeEach(() => {
-    component = new CheckResultRenderer();
+    TestBed.configureTestingModule({
+      declarations: [CheckResultFilterComponent]
+    });
+
+    fixture = TestBed.createComponent(CheckResultFilterComponent);
+    component = fixture.componentInstance;
   });
 
-  it('should initialize correctly', () => {
-    const params: ICellRendererParams = {
-      value: [true, 'Error: Something went wrong'],
-      // Add other necessary properties if needed
-    } as any;
-
-    component.agInit(params);
-
-    expect(component.isValid).toBe(true);
-    expect(component.message).toBe('Something went wrong');
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
 
-  it('should refresh correctly', () => {
-    const params: ICellRendererParams = {
-      value: [false, 'Warning: Check your input'],
-      // Add other necessary properties if needed
-    } as any;
+  describe('agInit', () => {
+    it('should initialize params correctly', () => {
+      const params: IFloatingFilterParams<ISimpleFilter> & CustomParams = {
+        // mock params here
+      };
 
-    component.refresh(params);
+      component.agInit(params);
 
-    expect(component.isValid).toBe(false);
-    expect(component.message).toBe('Check your input');
+      expect(component.params).toEqual(params);
+    });
   });
 
-  it('should handle message correctly', () => {
-    expect(component['handleMessage']('Info: All good')).toBe('All good');
-    expect(component['handleMessage']('Error')).toBe('');
+  describe('onParentModelChanged', () => {
+    it('should set showErrorsOnly to false when parentModel is null', () => {
+      component.onParentModelChanged(null);
+
+      expect(component.showErrorsOnly).toBeFalse();
+    });
+
+    it('should set showErrorsOnly based on parentModel.filter when parentModel is not null', () => {
+      const parentModel: IFilterDef = { filter: true }; // mock filter value
+
+      component.onParentModelChanged(parentModel);
+
+      expect(component.showErrorsOnly).toBeTrue();
+    });
+  });
+
+  describe('onInputBoxChanged', () => {
+    it('should call onFloatingFilterChanged with null values if showErrorsOnly is true', () => {
+      component.showErrorsOnly = true;
+      const mockInstance = jasmine.createSpyObj('parentFilterInstance', ['onFloatingFilterChanged']);
+
+      component.params.parentFilterInstance = (callback: (instance: any) => void) => callback(mockInstance);
+      
+      component.onInputBoxChanged();
+
+      expect(mockInstance.onFloatingFilterChanged).toHaveBeenCalledWith(null, null);
+    });
+
+    it('should call onFloatingFilterChanged with "contains" and showErrorsOnly values if showErrorsOnly is false', () => {
+      component.showErrorsOnly = false;
+      const mockInstance = jasmine.createSpyObj('parentFilterInstance', ['onFloatingFilterChanged']);
+
+      component.params.parentFilterInstance = (callback: (instance: any) => void) => callback(mockInstance);
+      
+      component.onInputBoxChanged();
+
+      expect(mockInstance.onFloatingFilterChanged).toHaveBeenCalledWith('contains', false);
+    });
   });
 });
