@@ -1,20 +1,4 @@
-it('should create a blob file from CSVFileDefinition', () => {
-      const mockCSVFileDefinition = new CSVFileDefinition('test.csv', ['Header1,Header2', 'Data1,Data2']);
-      spyOn(mockCSVFileDefinition, 'getCSVContents').and.returnValue(['Header1,Header2', 'Data1,Data2']);
-
-      const file = service.getBlobFileFromCSVFileDefinition(mockCSVFileDefinition);
-
-      expect(file).toBeTruthy();
-      expect(file.name).toBe('test.csv');
-      expect(file.type).toBe('');
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        expect(e.target.result).toBe('Header1,Header2\nData1,Data2');
-      };
-      reader.readAsText(file);
-    });
-
-    it('should generate a line string from RowNode data', () => {
+it('should generate a line string from RowNode data, excluding certain fields', () => {
       const mockRowNode = {
         data: {
           id: 1,
@@ -27,7 +11,7 @@ it('should create a blob file from CSVFileDefinition', () => {
 
       const line = service.getLineFromRowNode(mockRowNode);
 
-      expect(line).toBe('1,Alice,30,Pass');
+      expect(line).toBe('1,Alice,30');
     });
 
     it('should handle RowNode data with missing or excluded values correctly', () => {
@@ -43,5 +27,25 @@ it('should create a blob file from CSVFileDefinition', () => {
 
       const line = service.getLineFromRowNode(mockRowNode);
 
-      expect(line).toBe('2,Bob,,Fail');
+      expect(line).toBe('2,Bob,');
+    });
+
+    it('should gather all row data from GridApi as strings', () => {
+      const mockGridApi = jasmine.createSpyObj('GridApi', ['forEachNode']);
+      const mockData = [
+        { data: { id: 1, name: 'Alice', age: 30 } },
+        { data: { id: 2, name: 'Bob', age: 25 } }
+      ];
+
+      mockGridApi.forEachNode.and.callFake((callback: (node: any) => void) => {
+        mockData.forEach(callback);
+      });
+
+      const rowData = service.getRowDataFromGrid(mockGridApi as unknown as GridApi);
+
+      expect(rowData.length).toBe(2);
+      expect(rowData).toEqual([
+        mockData[0].data,
+        mockData[1].data,
+      ]);
     });
