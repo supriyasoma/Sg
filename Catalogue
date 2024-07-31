@@ -1,17 +1,17 @@
-it('should call getReferentialInformation with correct URL and headers', () => {
-  const dummyResponse = { data: 'test data' };
-  const referentialId = 'test-id';
+it('should call saveReferentialInformation with correct URL and headers', () => {
+  const dummyResponse = 'success';
+  const referentialInfo: ReferentialInfo = { referentialId: 'test-id', name: 'Test' };
   const mockUrl = 'http://mockurl.com/api/v1/referentials/informations';
 
   // Mock environment to use a different URL for testing
   environment.serviceBaseUrl = 'http://mockurl.com';
 
-  service.getReferentialInformation(referentialId).subscribe((response) => {
+  service.saveReferentialInformation(referentialInfo).subscribe((response) => {
     expect(response.body).toEqual(dummyResponse);
   });
 
-  const req = httpMock.expectOne(`${mockUrl}?referentialId=${referentialId}`);
-  expect(req.request.method).toBe('GET');
+  const req = httpMock.expectOne(mockUrl);
+  expect(req.request.method).toBe('POST');
   expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
   req.flush(dummyResponse);
 });
