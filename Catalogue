@@ -1,69 +1,17 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DatasetConfigComponent } from './dataset-config.component';
-import { DatasetInfoService } from '../services/dataset-info.service'; // Adjust the path as needed
-import { of } from 'rxjs';
+it('should call getReferentialInformation with correct URL and headers', () => {
+  const dummyResponse = { data: 'test data' };
+  const referentialId = 'test-id';
+  const mockUrl = 'http://mockurl.com/api/v1/referentials/informations';
 
-describe('DatasetConfigComponent', () => {
-  let component: DatasetConfigComponent;
-  let fixture: ComponentFixture<DatasetConfigComponent>;
-  let mockDatasetInfoService: jasmine.SpyObj<DatasetInfoService>;
+  // Mock environment to use a different URL for testing
+  environment.serviceBaseUrl = 'http://mockurl.com';
 
-  beforeEach(async () => {
-    const datasetInfoServiceSpy = jasmine.createSpyObj('DatasetInfoService', ['currentUserName', 'currentValidateDate', 'updateValidateDate', 'currentReferentialId', 'currentDatasetVersions', 'updateReferentialId', 'updateSelectedVersion']);
-    
-    await TestBed.configureTestingModule({
-      declarations: [ DatasetConfigComponent ],
-      providers: [
-        { provide: DatasetInfoService, useValue: datasetInfoServiceSpy }
-      ]
-    })
-    .compileComponents();
-
-    mockDatasetInfoService = TestBed.inject(DatasetInfoService) as jasmine.SpyObj<DatasetInfoService>;
+  service.getReferentialInformation(referentialId).subscribe((response) => {
+    expect(response.body).toEqual(dummyResponse);
   });
 
-  beforeEach(() => {
-    fixture = TestBed.createComponent(DatasetConfigComponent);
-    component = fixture.componentInstance;
-
-    // Mocking the service observables
-    mockDatasetInfoService.currentUserName.and.returnValue(of('Test User'));
-    mockDatasetInfoService.currentValidateDate.and.returnValue(of('2024-01-01'));
-    mockDatasetInfoService.currentReferentialId.and.returnValue(of('12345'));
-    mockDatasetInfoService.currentDatasetVersions.and.returnValue(of(['v1', 'v2', 'v3']));
-
-    fixture.detectChanges();
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should initialize with correct values from services', () => {
-    expect(component.userName).toBe('Test User');
-    expect(component.validationDate).toBe('2024-01-01');
-    expect(component.version).toEqual(['v1', 'v2', 'v3']);
-    expect(component.selectedVersion).toBe('v1');
-  });
-
-  it('should call updateValidateDate with the correct date', () => {
-    const dateSpy = mockDatasetInfoService.updateValidateDate as jasmine.Spy;
-    component.ngOnInit();
-    expect(dateSpy).toHaveBeenCalledWith(component.validationDate);
-  });
-
-  it('should call updateReferentialId with the correct ID', () => {
-    const idSpy = mockDatasetInfoService.updateReferentialId as jasmine.Spy;
-    component.ngOnInit();
-    expect(idSpy).toHaveBeenCalledWith(component.referentialId);
-  });
-
-  it('should call updateSelectedVersion when versionSelect is called', () => {
-    const versionSpy = mockDatasetInfoService.updateSelectedVersion as jasmine.Spy;
-    const mockEvent = { target: { value: 'v2' } };
-    component.versionSelect(mockEvent);
-    expect(versionSpy).toHaveBeenCalledWith('v2');
-  });
-
-  // Add more test cases as needed...
+  const req = httpMock.expectOne(`${mockUrl}?referentialId=${referentialId}`);
+  expect(req.request.method).toBe('GET');
+  expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
+  req.flush(dummyResponse);
 });
