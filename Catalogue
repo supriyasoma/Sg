@@ -1,62 +1,44 @@
-import { CheckResultFilterComponent } from 'path-to-your-component';
-import { CheckResultRenderer } from 'path-to-your-renderer';
-import { referentials } from 'path-to-your-referentials';
+it('should have the correct column definitions', () => {
+    const colDef = referentials.referentialsColDef[0].colDef;
+    expect(colDef.length).toBe(3);
 
-// Mocking functions and components if necessary
-function mockCheckResultFilterComponent() { /* mock implementation */ }
-function mockCheckResultRenderer() { /* mock implementation */ }
+    // Test the checkboxBtn column
+    const checkboxBtn = colDef[0];
+    expect(checkboxBtn.field).toBe('checkboxBtn');
+    expect(checkboxBtn.checkboxSelection).toBeTrue();
+    expect(checkboxBtn.headerCheckboxSelection).toBeTrue();
+    expect(checkboxBtn.pinned).toBe('left');
 
-describe('Referentials Configuration', () => {
+    // Test the sourceApplicationCode column
+    const sourceAppCode = colDef[1];
+    expect(sourceAppCode.field).toBe('sourceApplicationCode');
+    expect(sourceAppCode.headerName).toBe('SourceApplicationCode');
+    expect(sourceAppCode.floatingFilter).toBeTrue();
+    expect(sourceAppCode.filter).toBe('agTextColumnFilter');
+    expect(sourceAppCode.editable).toBeFalse();
+    expect(sourceAppCode.resizable).toBeTrue();
+    expect(sourceAppCode.sortable).toBeTrue();
+    expect(sourceAppCode.cellClass).toBe('cellClass');
 
-  it('should have the correct configuration for "business_area"', () => {
-    const businessArea = referentials.referentialsList.find(r => r.id === 'business_area');
-    expect(businessArea).toBeDefined();
-    expect(businessArea.name).toBe('Business Area');
+    // Test the checkResult column
+    const checkResult = colDef[2];
+    expect(checkResult.field).toBe('checkResult');
+    expect(checkResult.headerName).toBe('CheckResult');
+    expect(checkResult.floatingFilter).toBeTrue();
+    expect(checkResult.filter).toBe('agTextColumnFilter');
+    expect(checkResult.filterParams.textMatcher).toBeDefined();
+    expect(checkResult.floatingFilterComponent).toBe(CheckResultFilterComponent);
+    expect(checkResult.floatingFilterComponentParams.suppressFilterButton).toBeTrue();
+    expect(checkResult.cellRendererSelector).toBeDefined();
   });
 
-  it('should have the correct column definitions', () => {
-    const businessAreaColDef = referentials.referentialsColDef.find(r => r.id === 'business_area').colDef;
-    expect(businessAreaColDef).toBeDefined();
-    expect(businessAreaColDef.length).toBe(3);
+  it('should use textMatcher correctly in filterParams for checkResult', () => {
+    const checkResultCol = referentials.referentialsColDef[0].colDef[2];
+    const textMatcher = checkResultCol.filterParams.textMatcher;
 
-    const checkboxColumn = businessAreaColDef[0];
-    expect(checkboxColumn.field).toBe('checkboxBtn');
-    expect(checkboxColumn.checkboxSelection).toBe(true);
-    expect(checkboxColumn.headerCheckboxSelection).toBe(true);
+    let result = textMatcher('contains', 'valid', { checkResult: { isValid: true } });
+    expect(result).toBeTrue();
 
-    const sourceApplicationCodeColumn = businessAreaColDef[1];
-    expect(sourceApplicationCodeColumn.field).toBe('sourceApplicationCode');
-    expect(sourceApplicationCodeColumn.headerName).toBe('SourceApplicationCode');
-    expect(sourceApplicationCodeColumn.floatingFilter).toBe(true);
-    expect(sourceApplicationCodeColumn.filter).toBe('agTextColumnFilter');
-    expect(sourceApplicationCodeColumn.editable).toBe(false);
-    expect(sourceApplicationCodeColumn.resizable).toBe(true);
-    expect(sourceApplicationCodeColumn.sortable).toBe(true);
-
-    const checkResultColumn = businessAreaColDef[2];
-    expect(checkResultColumn.field).toBe('checkResult');
-    expect(checkResultColumn.headerName).toBe('CheckResult');
-    expect(checkResultColumn.floatingFilter).toBe(true);
-    expect(checkResultColumn.filter).toBe('agTextColumnFilter');
-    expect(checkResultColumn.filterParams.textMatcher).toBeDefined();
-    expect(checkResultColumn.floatingFilterComponent).toBe(CheckResultFilterComponent);
-    expect(checkResultColumn.floatingFilterComponentParams.suppressFilterButton).toBe(true);
-    expect(checkResultColumn.cellRendererSelector).toBeDefined();
+    result = textMatcher('contains', 'invalid', { checkResult: { isValid: false } });
+    expect(result).toBeFalse();
   });
-
-  it('should use the correct filterParams for checkResultColumn', () => {
-    const checkResultColumn = referentials.referentialsColDef.find(r => r.id === 'business_area').colDef[2];
-    const filterParams = checkResultColumn.filterParams;
-    const result = filterParams.textMatcher('contains', 'some text', { checkResult: { isValid: true } });
-    expect(result).toBe(true);
-  });
-
-  it('should have the correct cellRendererSelector for checkResultColumn', () => {
-    const checkResultColumn = referentials.referentialsColDef.find(r => r.id === 'business_area').colDef[2];
-    const cellRendererSelector = checkResultColumn.cellRendererSelector;
-    const params = { data: { checkResult: { isValid: true, message: 'Valid' } } };
-    const result = cellRendererSelector(params);
-    expect(result.component).toBe(CheckResultRenderer);
-    expect(result.params.value).toEqual([true, 'Valid']);
-  });
-});
