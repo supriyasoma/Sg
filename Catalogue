@@ -1,15 +1,66 @@
-it('should use the correct filterParams for checkResultColumn', () => {
-    const checkResultColumn = referentials.referentialsColDef.find(r => r.id === 'business_area').colDef[2];
-    const filterParams = checkResultColumn.filterParams;
-    const result = filterParams.textMatcher('contains', 'some text', { checkResult: { isValid: true } });
-    expect(result).toBe(true);
+it('should have correct referentialsColDef configuration', () => {
+    const colDefs = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef;
+    
+    expect(colDefs).toBeTruthy();
+
+    expect(colDefs[0]).toEqual({
+      field: 'checkboxBtn',
+      headerName: '',
+      checkboxSelection: true,
+      headerCheckboxSelection: true,
+      pinned: 'left',
+      minWidth: 50,
+      maxWidth: 60
+    });
+
+    expect(colDefs[1]).toEqual(jasmine.objectContaining({
+      field: 'sourceApplicationCode',
+      headerName: 'SourceApplicationCode',
+      headerTooltip: 'SourceApplicationCode',
+      floatingFilter: true,
+      filter: 'agTextColumnFilter',
+      suppressMenu: true,
+      editable: false,
+      resizable: true,
+      sortable: true,
+      cellClass: 'cellClass',
+      onCellValueChanged: 'cellValueChanged'
+    }));
+
+    expect(colDefs[2]).toEqual(jasmine.objectContaining({
+      field: 'checkResult',
+      headerName: 'CheckResult',
+      floatingFilter: true,
+      filter: 'agTextColumnFilter',
+      filterParams: jasmine.objectContaining({
+        textMatcher: jasmine.any(Function)
+      }),
+      floatingFilterComponent: CheckResultFilterComponent,
+      floatingFilterComponentParams: jasmine.objectContaining({
+        suppressFilterButton: true
+      }),
+      suppressMenu: true,
+      minWidth: 150,
+      resizable: true,
+      cellRendererSelector: jasmine.any(Function)
+    }));
   });
 
-  it('should have the correct cellRendererSelector for checkResultColumn', () => {
-    const checkResultColumn = referentials.referentialsColDef.find(r => r.id === 'business_area').colDef[2];
-    const cellRendererSelector = checkResultColumn.cellRendererSelector;
-    const params = { data: { checkResult: { isValid: true, message: 'Valid' } } };
-    const result = cellRendererSelector(params);
-    expect(result.component).toBe(CheckResultRenderer);
-    expect(result.params.value).toEqual([true, 'Valid']);
+  it('should have correct textMatcher function in filterParams', () => {
+    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef[2];
+    const textMatcher = colDef.filterParams.textMatcher;
+    const mockData = { checkResult: { isValid: true, message: 'Test message' } };
+    
+    expect(textMatcher('contains', 'Test', mockData)).toBe(true);
+    expect(textMatcher('contains', 'Test', { checkResult: { isValid: false } })).toBe(false);
+    expect(textMatcher('contains', '', { checkResult: { isValid: true } })).toBe(false);
+  });
+
+  it('should call CheckResultRenderer with correct params in cellRendererSelector', () => {
+    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef[2];
+    const mockParams = { data: { checkResult: { isValid: true, message: 'Valid message' } } };
+
+    const rendererResult = colDef.cellRendererSelector(mockParams);
+    expect(rendererResult.component).toBe(CheckResultRenderer);
+    expect(rendererResult.params.value).toEqual([true, 'Valid message']);
   });
