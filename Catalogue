@@ -1,9 +1,10 @@
 it('should have correct referentialsColDef configuration', () => {
-    const colDefs = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef;
-    
+    const colDefs = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef;
+
     expect(colDefs).toBeTruthy();
 
-    expect(colDefs[0]).toEqual({
+    const checkboxColDef: ColDef = colDefs?.[0];
+    expect(checkboxColDef).toEqual({
       field: 'checkboxBtn',
       headerName: '',
       checkboxSelection: true,
@@ -13,7 +14,8 @@ it('should have correct referentialsColDef configuration', () => {
       maxWidth: 60
     });
 
-    expect(colDefs[1]).toEqual(jasmine.objectContaining({
+    const sourceAppCodeColDef: ColDef = colDefs?.[1];
+    expect(sourceAppCodeColDef).toEqual(jasmine.objectContaining({
       field: 'sourceApplicationCode',
       headerName: 'SourceApplicationCode',
       headerTooltip: 'SourceApplicationCode',
@@ -23,11 +25,12 @@ it('should have correct referentialsColDef configuration', () => {
       editable: false,
       resizable: true,
       sortable: true,
-      cellClass: 'cellClass',
-      onCellValueChanged: 'cellValueChanged'
+      cellClass: jasmine.any(Function),
+      onCellValueChanged: jasmine.any(Function)
     }));
 
-    expect(colDefs[2]).toEqual(jasmine.objectContaining({
+    const checkResultColDef: ColDef = colDefs?.[2];
+    expect(checkResultColDef).toEqual(jasmine.objectContaining({
       field: 'checkResult',
       headerName: 'CheckResult',
       floatingFilter: true,
@@ -47,20 +50,26 @@ it('should have correct referentialsColDef configuration', () => {
   });
 
   it('should have correct textMatcher function in filterParams', () => {
-    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef[2];
-    const textMatcher = colDef.filterParams.textMatcher;
+    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef[2];
+    const textMatcher = colDef?.filterParams?.textMatcher;
     const mockData = { checkResult: { isValid: true, message: 'Test message' } };
-    
-    expect(textMatcher('contains', 'Test', mockData)).toBe(true);
-    expect(textMatcher('contains', 'Test', { checkResult: { isValid: false } })).toBe(false);
-    expect(textMatcher('contains', '', { checkResult: { isValid: true } })).toBe(false);
+
+    expect(textMatcher).toBeDefined();
+    if (textMatcher) {
+      expect(textMatcher('contains', 'Test', mockData)).toBe(true);
+      expect(textMatcher('contains', 'Test', { checkResult: { isValid: false } })).toBe(false);
+      expect(textMatcher('contains', '', { checkResult: { isValid: true } })).toBe(false);
+    }
   });
 
   it('should call CheckResultRenderer with correct params in cellRendererSelector', () => {
-    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area').colDef[2];
+    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef[2];
     const mockParams = { data: { checkResult: { isValid: true, message: 'Valid message' } } };
 
-    const rendererResult = colDef.cellRendererSelector(mockParams);
-    expect(rendererResult.component).toBe(CheckResultRenderer);
-    expect(rendererResult.params.value).toEqual([true, 'Valid message']);
+    const rendererResult = colDef?.cellRendererSelector(mockParams);
+    expect(rendererResult).toBeDefined();
+    if (rendererResult) {
+      expect(rendererResult.component).toBe(CheckResultRenderer);
+      expect(rendererResult.params.value).toEqual([true, 'Valid message']);
+    }
   });
