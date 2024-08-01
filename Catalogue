@@ -1,17 +1,77 @@
-it('should call saveReferentialInformation with correct URL and headers', () => {
-  const dummyResponse = 'success';
-  const referentialInfo: ReferentialInfo = { referentialId: 'test-id', name: 'Test' };
-  const mockUrl = 'http://mockurl.com/api/v1/referentials/informations';
+describe('DatasetEditComponent', () => {
+  let component: DatasetEditComponent;
+  let fixture: ComponentFixture<DatasetEditComponent>;
+  let gridApi: GridApi;
 
-  // Mock environment to use a different URL for testing
-  environment.serviceBaseUrl = 'http://mockurl.com';
-
-  service.saveReferentialInformation(referentialInfo).subscribe((response) => {
-    expect(response.body).toEqual(dummyResponse);
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [
+        HttpClientTestingModule,
+        AgGridModule.withComponents([CheckResultFilterComponent, CheckResultRenderer])
+      ],
+      declarations: [DatasetEditComponent]
+    }).compileComponents();
   });
 
-  const req = httpMock.expectOne(mockUrl);
-  expect(req.request.method).toBe('POST');
-  expect(req.request.headers.get('Accept')).toBe('application/json; charset=utf-8');
-  req.flush(dummyResponse);
+  beforeEach(() => {
+    fixture = TestBed.createComponent(DatasetEditComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should set gridApi on grid ready', () => {
+    const params = {
+      api: {
+        refreshCells: jasmine.createSpy('refreshCells')
+      }
+    };
+    component.onGridReady(params);
+    expect(component['gridApi']).toBe(params.api);
+  });
+
+  it('should have the correct column definitions', () => {
+    expect(component.columnDefs).toEqual(referentials.referentialsColDef);
+  });
+
+  it('should call cellValueChanged on cell value change', () => {
+    const mockEvent = {
+      oldValue: 'old',
+      newValue: 'new',
+      colDef: { field: 'someField' },
+      data: {},
+      api: {
+        refreshCells: jasmine.createSpy('refreshCells')
+      }
+    };
+    cellValueChanged(mockEvent);
+    expect(mockEvent.data.someField).toBe('NEW');
+    expect(mockEvent.api.refreshCells).toHaveBeenCalledWith({ columns: ['someField'] });
+  });
+
+  it('should assign correct cellClass based on conditions', () => {
+    const params: any = {
+      colDef: { field: 'someField' },
+      api: {
+        columnModel: {
+          columnDefs: [{ field: 'someField' }]
+        }
+      },
+      data: {
+        checkResult: {
+          invalidColumns: [0]
+        },
+        previousValue: undefined,
+        someField: 'newValue'
+      }
+    };
+
+    const result = cellClass(params);
+    expect(result).toBe('cell-invalid');
+  });
+
+  // Add more test cases for different conditions, interactions, etc.
 });
