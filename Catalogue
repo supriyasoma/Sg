@@ -3,43 +3,44 @@ def largest_sum_cycle(edges):
     max_sum = -1
     visited = [False] * n
     in_stack = [False] * n
-    path = []
     
-    def dfs(node):
-        nonlocal max_sum, path
+    def dfs(node, path_sum, path):
+        nonlocal max_sum
         visited[node] = True
         in_stack[node] = True
-        path.append(node)
         
+        cycle_sum = 0
         neighbor = edges[node]
         
         if neighbor != -1:
             if not visited[neighbor]:
-                dfs(neighbor)
+                cycle_sum = dfs(neighbor, path_sum + neighbor, path + [neighbor])
             elif in_stack[neighbor]:
                 # Found a cycle
-                cycle_sum = 0
-                cycle_start_index = path.index(neighbor)
-                for i in range(cycle_start_index, len(path)):
-                    cycle_sum += path[i]
+                cycle_start = path.index(neighbor)
+                cycle_sum = sum(path[cycle_start:]) + neighbor
                 max_sum = max(max_sum, cycle_sum)
         
         in_stack[node] = False
-        path.pop()
+        return cycle_sum
     
     for i in range(n):
         if not visited[i]:
-            dfs(i)
+            dfs(i, i, [i])
     
     return max_sum
 
 def helper_function():
-    import sys
-    input = sys.stdin.read
-    data = input().strip().split()
+    # Default input
+    input_data = """
+23
+4 4 1 4 13 8 8 8 0 8 14 9 15 11 -1 10 15 22 22 22 22 22 21
+    """
+    
+    data = input_data.split()
     
     n = int(data[0])  # Number of cells
-    edges = list(map(int, data[1:1+n]))
+    edges = list(map(int, data[1:n+1]))
     
     result = largest_sum_cycle(edges)
     print(result)
