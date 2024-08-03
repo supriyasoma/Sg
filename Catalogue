@@ -1,75 +1,56 @@
-it('should have correct referentialsColDef configuration', () => {
-    const colDefs = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef;
+def largest_sum_cycle(edges):
+    n = len(edges)
+    max_sum = -1
+    visited = [False] * n
+    in_stack = [False] * n
+    stack = [0] * n
+    
+    def dfs(node):
+        nonlocal edges, visited, in_stack, stack
+        visited[node] = True
+        in_stack[node] = True
+        stack[node] = node
+        
+        cycle_sum = 0
+        neighbor = edges[node]
+        
+        if neighbor != -1:
+            if not visited[neighbor]:
+                cycle_sum = dfs(neighbor)
+            elif in_stack[neighbor]:
+                # Found a cycle
+                start = neighbor
+                sum_ = 0
+                while True:
+                    sum_ += stack[start]
+                    start = edges[start]
+                    if start == neighbor:
+                        break
+                cycle_sum = sum_
+        
+        in_stack[node] = False
+        return cycle_sum
+    
+    for i in range(n):
+        if not visited[i]:
+            cycle_sum = dfs(i)
+            if cycle_sum > 0:
+                max_sum = max(max_sum, cycle_sum)
+    
+    return max_sum
 
-    expect(colDefs).toBeTruthy();
 
-    const checkboxColDef: ColDef = colDefs?.[0];
-    expect(checkboxColDef).toEqual({
-      field: 'checkboxBtn',
-      headerName: '',
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      pinned: 'left',
-      minWidth: 50,
-      maxWidth: 60
-    });
+def helper_function():
+    import sys
+    input = sys.stdin.read
+    data = input().split()
+    
+    n = int(data[0])  # Number of cells
+    edges = list(map(int, data[1:n+1]))
+    
+    result = largest_sum_cycle(edges)
+    print(result)
 
-    const sourceAppCodeColDef: ColDef = colDefs?.[1];
-    expect(sourceAppCodeColDef).toEqual(jasmine.objectContaining({
-      field: 'sourceApplicationCode',
-      headerName: 'SourceApplicationCode',
-      headerTooltip: 'SourceApplicationCode',
-      floatingFilter: true,
-      filter: 'agTextColumnFilter',
-      suppressMenu: true,
-      editable: false,
-      resizable: true,
-      sortable: true,
-      cellClass: jasmine.any(Function),
-      onCellValueChanged: jasmine.any(Function)
-    }));
 
-    const checkResultColDef: ColDef = colDefs?.[2];
-    expect(checkResultColDef).toEqual(jasmine.objectContaining({
-      field: 'checkResult',
-      headerName: 'CheckResult',
-      floatingFilter: true,
-      filter: 'agTextColumnFilter',
-      filterParams: jasmine.objectContaining({
-        textMatcher: jasmine.any(Function)
-      }),
-      floatingFilterComponent: CheckResultFilterComponent,
-      floatingFilterComponentParams: jasmine.objectContaining({
-        suppressFilterButton: true
-      }),
-      suppressMenu: true,
-      minWidth: 150,
-      resizable: true,
-      cellRendererSelector: jasmine.any(Function)
-    }));
-  });
-
-  it('should have correct textMatcher function in filterParams', () => {
-    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef[2];
-    const textMatcher = colDef?.filterParams?.textMatcher;
-    const mockData = { checkResult: { isValid: true, message: 'Test message' } };
-
-    expect(textMatcher).toBeDefined();
-    if (textMatcher) {
-      expect(textMatcher('contains', 'Test', mockData)).toBe(true);
-      expect(textMatcher('contains', 'Test', { checkResult: { isValid: false } })).toBe(false);
-      expect(textMatcher('contains', '', { checkResult: { isValid: true } })).toBe(false);
-    }
-  });
-
-  it('should call CheckResultRenderer with correct params in cellRendererSelector', () => {
-    const colDef = referentials.referentialsColDef.find(col => col.id === 'business_area')?.colDef[2];
-    const mockParams = { data: { checkResult: { isValid: true, message: 'Valid message' } } };
-
-    const rendererResult = colDef?.cellRendererSelector(mockParams);
-    expect(rendererResult).toBeDefined();
-    if (rendererResult) {
-      expect(rendererResult.component).toBe(CheckResultRenderer);
-      expect(rendererResult.params.value).toEqual([true, 'Valid message']);
-    }
-  });
+if __name__ == "__main__":
+    helper_function()
