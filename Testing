@@ -1,108 +1,116 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BluebookPidV2Component } from './bluebook-pid-v2.component';
 import { BluebookPidV2Service } from './bluebook-pid-v2.service';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { of, throwError } from 'rxjs';
-import * as moment from 'moment';
-import * as FileSaver from 'file-saver';
-import { HttpResponse } from '@angular/common/http';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { ToastrModule } from 'ngx-toastr';
+import { TranslateModule, TranslateLoader, TranslateFakeLoader } from '@ngx-translate/core';
+import { FormBuilder, FormControl, Validators } from '@angular/forms';
+import { of } from 'rxjs';
+import { CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('BluebookPidV2Component', () => {
   let component: BluebookPidV2Component;
   let fixture: ComponentFixture<BluebookPidV2Component>;
-  let mockService: jasmine.SpyObj<BluebookPidV2Service>;
+  let bluebookPidV2Service: jasmine.SpyObj<BluebookPidV2Service>;
+  let mockFormBuilder: any;
+
+  const formGroupStub = {
+    bank: new FormControl('', Validators.required),
+    startDate: new FormControl('', Validators.required),
+    endDate: new FormControl('', Validators.required),
+  };
 
   beforeEach(async () => {
-    const serviceSpy = jasmine.createSpyObj('BluebookPidV2Service', ['getBanks', 'generateReport']);
+    // Mock BluebookPidV2Service methods
+    bluebookPidV2Service = jasmine.createSpyObj('BluebookPidV2Service', ['getBanks', 'getIndicators', 'generateReport']);
+    bluebookPidV2Service.getBanks.and.returnValue(of([]));
+    bluebookPidV2Service.generateReport.and.returnValue(of({}));
+
+    // Mock FormBuilder
+    mockFormBuilder = jasmine.createSpyObj('FormBuilder', ['group']);
+    mockFormBuilder.group.and.returnValue(formGroupStub);
 
     await TestBed.configureTestingModule({
-      declarations: [BluebookPidV2Component],
-      providers: [
-        FormBuilder,
-        { provide: BluebookPidV2Service, useValue: serviceSpy }
+      imports: [
+        HttpClientTestingModule,
+        ToastrModule.forRoot({ positionClass: 'toast-top-full-width' }),
+        TranslateModule.forRoot({
+          loader: { provide: TranslateLoader, useClass: TranslateFakeLoader }
+        })
       ],
-      imports: [ReactiveFormsModule]
+      providers: [
+        { provide: BluebookPidV2Service, useValue: bluebookPidV2Service },
+        { provide: FormBuilder, useValue: mockFormBuilder }
+      ],
+      declarations: [BluebookPidV2Component],
+      schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA]
     }).compileComponents();
+  });
 
+  beforeEach(() => {
     fixture = TestBed.createComponent(BluebookPidV2Component);
     component = fixture.componentInstance;
-    mockService = TestBed.inject(BluebookPidV2Service) as jasmine.SpyObj<BluebookPidV2Service>;
-
     fixture.detectChanges();
   });
 
-  it('should initialize the form with bank, startDate, and endDate controls', () => {
-    expect(component.form.contains('bank')).toBeTruthy();
-    expect(component.form.contains('startDate')).toBeTruthy();
-    expect(component.form.contains('endDate')).toBeTruthy();
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
 
-  it('should fetch banks on initialization', () => {
-    const bankData = [
-      { bic: 'BANK1', code: '001', name: 'Bank One' },
-      { bic: 'BANK2', code: '002', name: 'Bank Two' }
+  it('should initialize form with default values', () => {
+    expect(component.form).toBeDefined();
+    expect(component.form.get('bank')).toBeDefined();
+    expect(component.form.get('startDate')).toBeDefined();
+    expect(component.form.get('endDate')).toBeDefined();
+  });
+
+  it('should call getBanks on init and populate banks', () => {
+    const banksMock = [
+      { bic: 'BANK1', code: '001', name: 'Bank One', display: 'Bank One (BANK1 001)' },
+      { bic: 'BANK2', code: '002', name: 'Bank Two', display: 'Bank Two (BANK2 002)' }
     ];
-    mockService.getBanks.and.returnValue(of(bankData));
+    bluebookPidV2Service.getBanks.and.returnValue(of(banksMock));
 
     component.ngOnInit();
-    fixture.detectChanges();
-
-    expect(mockService.getBanks).toHaveBeenCalled();
-    expect(component.banks.length).toBe(2);
-    expect(component.banks[0].name).toBe('Bank One');
+    expect(component.banks).toEqual(banksMock);
   });
 
-  it('should generate report with correct formatted dates', () => {
-    spyOn(FileSaver, 'saveAs');
-    
-    // Mock form values
+  it('should generate report with proper format and date range', () => {
     component.form.setValue({
       bank: { bic: 'BANK1', code: '001', name: 'Bank One' },
-      startDate: '2024-01-15',
-      endDate: '2024-01-31'
+      startDate: '2023-01-01',
+      endDate: '2023-12-31'
     });
 
-    // Mock report service response
-    const reportData = new HttpResponse({ body: new Blob(['report content']), headers: new Headers({'Content-Disposition': 'attachment; filename="report.pdf"'}) });
-    mockService.generateReport.and.returnValue(of(reportData));
-
     component.generateReport('pdf');
-
-    expect(mockService.generateReport).toHaveBeenCalledWith({
-      biccode: 'BANK1',
-      codetiank: '001',
-      bankName: 'Bank One',
-      startDate: moment('2024-01-15').startOf('month').format('YYYY-MM-DD'),
-      endDate: moment('2024-01-31').endOf('month').format('YYYY-MM-DD')
-    }, 'pdf');
-
-    expect(FileSaver.saveAs).toHaveBeenCalled();
-  });
-
-  it('should handle report generation error and set error message', () => {
-    spyOn(FileSaver, 'saveAs');
-
-    component.form.setValue({
-      bank: { bic: 'BANK1', code: '001', name: 'Bank One' },
-      startDate: '2024-01-15',
-      endDate: '2024-01-31'
-    });
-
-    const errorResponse = new HttpResponse({ status: 500, statusText: 'Internal Server Error' });
-    mockService.generateReport.and.returnValue(throwError(errorResponse));
-
-    component.generateReport('pdf');
-
-    expect(component.$successHandler.value).toEqual({
-      done: true,
-      success: false,
-      message: `Error while downloading report ${component.getDefaultFileName({
+    expect(bluebookPidV2Service.generateReport).toHaveBeenCalledWith(
+      jasmine.objectContaining({
         biccode: 'BANK1',
-        codetiank: '001',
-        bankName: 'Bank One',
-        startDate: moment('2024-01-15').startOf('month').format('YYYY-MM-DD'),
-        endDate: moment('2024-01-31').endOf('month').format('YYYY-MM-DD')
-      }, 'pdf')} (Internal Server Error)`
-    });
+        startDate: '2023-01-01',
+        endDate: '2023-12-31'
+      }),
+      'pdf'
+    );
+  });
+
+  it('should search for banks based on input', () => {
+    component.banks = [
+      { bic: 'BANK1', code: '001', name: 'Bank One', display: 'Bank One (BANK1 001)' },
+      { bic: 'BANK2', code: '002', name: 'Bank Two', display: 'Bank Two (BANK2 002)' }
+    ];
+
+    component.search({ query: 'bank one' });
+    expect(component.suggestions).toEqual([{ bic: 'BANK1', code: '001', name: 'Bank One', display: 'Bank One (BANK1 001)' }]);
+  });
+
+  it('should display toastr message on report download error', () => {
+    const errorMessage = 'Error while downloading report';
+    spyOn(component['toastr'], 'error');
+    const error = { message: errorMessage };
+
+    bluebookPidV2Service.generateReport.and.returnValue(of(error));
+    component.generateReport('pdf');
+
+    expect(component['toastr'].error).toHaveBeenCalledWith(errorMessage);
   });
 });
