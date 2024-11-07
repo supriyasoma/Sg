@@ -1,64 +1,56 @@
+import { TestBed } from '@angular/core/testing';
+import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import * as moment from 'moment';
+import { MatDatepicker } from '@angular/material/datepicker';
+import { YourComponent } from './your.component'; // Replace with your component path
+import { Moment } from 'moment';
 
-describe('BluebookPidV2Component', () => {
-  let component: BluebookPidV2Component;
-  let fixture: ComponentFixture<BluebookPidV2Component>;
-  let bluebookPidV2Service: jasmine.SpyObj<BluebookPidV2Service>;
-
-  beforeEach(async () => {
-    // Mock BluebookPidV2Service methods
-    bluebookPidV2Service = jasmine.createSpyObj('BluebookPidV2Service', ['getBanks', 'getIndicators', 'generateReport']);
-    bluebookPidV2Service.getBanks.and.returnValue(of([]));
-    bluebookPidV2Service.generateReport.and.returnValue(of({}));
-
-    await TestBed.configureTestingModule({
-      imports: [
-        HttpClientTestingModule,
-        ToastrModule.forRoot({ positionClass: 'toast-top-full-width' }),
-        TranslateModule.forRoot({
-          loader: { provide: TranslateLoader, useClass: TranslateFakeLoader }
-        })
-      ],
-      providers: [
-        { provide: BluebookPidV2Service, useValue: bluebookPidV2Service },
-        FormBuilder
-      ],
-      declarations: [BluebookPidV2Component],
-      schemas: [CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA]
-    }).compileComponents();
-  });
+describe('YourComponent', () => {
+  let component: YourComponent;
 
   beforeEach(() => {
-    fixture = TestBed.createComponent(BluebookPidV2Component);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  it('should generate report with properly formatted startDate and endDate', () => {
-    const mockStartDate = '2023-01-15';
-    const mockEndDate = '2023-12-15';
-
-    // Mock moment to control the output for startOf and endOf
-    spyOn(moment.prototype, 'startOf').and.returnValue(moment('2023-01-01'));
-    spyOn(moment.prototype, 'endOf').and.returnValue(moment('2023-12-31'));
-
-    component.form.setValue({
-      bank: { bic: 'BANK1', code: '001', name: 'Bank One' },
-      startDate: mockStartDate,
-      endDate: mockEndDate
+    TestBed.configureTestingModule({
+      imports: [ReactiveFormsModule],
+      providers: [FormBuilder]
     });
 
-    // Call generateReport
-    component.generateReport('pdf');
+    const formBuilder = TestBed.inject(FormBuilder);
+    component = new YourComponent(formBuilder);
 
-    // Verify the service call with formatted dates
-    expect(bluebookPidV2Service.generateReport).toHaveBeenCalledWith(
-      jasmine.objectContaining({
-        biccode: 'BANK1',
-        startDate: '2023-01-01',
-        endDate: '2023-12-31'
-      }),
-      'pdf'
-    );
+    // Set up form group with startDate and endDate
+    component.form = formBuilder.group({
+      startDate: new FormControl(),
+      endDate: new FormControl()
+    });
+  });
+
+  it('should set month and year for endDate', () => {
+    // Arrange
+    const normalizedMonthAndYear = moment('2024-05', 'YYYY-MM'); // Set May 2024 for example
+    const datepicker: MatDatepicker<Moment> = jasmine.createSpyObj('MatDatepicker', ['close']);
+
+    // Act
+    component.setMonthAndYearEndDate(normalizedMonthAndYear, datepicker);
+
+    // Assert
+    const endDateValue = component.form.controls['endDate'].value;
+    expect(endDateValue.month()).toBe(4); // May is month 4 (0-indexed)
+    expect(endDateValue.year()).toBe(2024);
+    expect(datepicker.close).toHaveBeenCalled();
+  });
+
+  it('should set month and year for startDate', () => {
+    // Arrange
+    const normalizedMonthAndYear = moment('2023-10', 'YYYY-MM'); // Set October 2023 for example
+    const datepicker: MatDatepicker<Moment> = jasmine.createSpyObj('MatDatepicker', ['close']);
+
+    // Act
+    component.setMonthAndYearStartDate(normalizedMonthAndYear, datepicker);
+
+    // Assert
+    const startDateValue = component.form.controls['startDate'].value;
+    expect(startDateValue.month()).toBe(9); // October is month 9 (0-indexed)
+    expect(startDateValue.year()).toBe(2023);
+    expect(datepicker.close).toHaveBeenCalled();
   });
 });
