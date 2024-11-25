@@ -1,56 +1,96 @@
-import { TestBed } from '@angular/core/testing';
-import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import * as moment from 'moment';
-import { MatDatepicker } from '@angular/material/datepicker';
-import { YourComponent } from './your.component'; // Replace with your component path
-import { Moment } from 'moment';
+import { of, throwError } from 'rxjs';
+import { YourComponent } from './your.component';
+import { MenuService } from '../services/menu.service';
+import { AuthentificationService } from '../services/authentification.service';
+import { SortUtil } from '../utils/sort-util';
+import { MenuItem } from '../models/menu-item.model';
 
 describe('YourComponent', () => {
   let component: YourComponent;
+  let menuServiceMock: any;
+  let authServiceMock: any;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [ReactiveFormsModule],
-      providers: [FormBuilder]
-    });
-
-    const formBuilder = TestBed.inject(FormBuilder);
-    component = new YourComponent(formBuilder);
-
-    // Set up form group with startDate and endDate
-    component.form = formBuilder.group({
-      startDate: new FormControl(),
-      endDate: new FormControl()
-    });
+    menuServiceMock = jasmine.createSpyObj('MenuService', ['get']);
+    authServiceMock = jasmine.createSpyObj('AuthentificationService', ['fetchUserinfo', 'hasUserPermission', 'fetchUserName']);
+    component = new YourComponent(menuServiceMock, authServiceMock);
   });
 
-  it('should set month and year for endDate', () => {
-    // Arrange
-    const normalizedMonthAndYear = moment('2024-05', 'YYYY-MM'); // Set May 2024 for example
-    const datepicker: MatDatepicker<Moment> = jasmine.createSpyObj('MatDatepicker', ['close']);
+  it('should retrieve menu items and sort them correctly', () => {
+    const mockMenuItems = [
+      { label: 'home' },
+      { label: 'Application Reports', children: [] },
+      { label: 'Regulatory reporting', children: [] },
+    ];
 
-    // Act
-    component.setMonthAndYearEndDate(normalizedMonthAndYear, datepicker);
+    spyOn(SortUtil, 'sortByOrder').and.returnValue(mockMenuItems);
+    menuServiceMock.get.and.returnValue(of(mockMenuItems));
 
-    // Assert
-    const endDateValue = component.form.controls['endDate'].value;
-    expect(endDateValue.month()).toBe(4); // May is month 4 (0-indexed)
-    expect(endDateValue.year()).toBe(2024);
-    expect(datepicker.close).toHaveBeenCalled();
+    component.ngOnInit();
+
+    expect(menuServiceMock.get).toHaveBeenCalled();
+    expect(SortUtil.sortByOrder).toHaveBeenCalledWith(mockMenuItems);
   });
 
-  it('should set month and year for startDate', () => {
-    // Arrange
-    const normalizedMonthAndYear = moment('2023-10', 'YYYY-MM'); // Set October 2023 for example
-    const datepicker: MatDatepicker<Moment> = jasmine.createSpyObj('MatDatepicker', ['close']);
+  it('should populate menu items based on user permissions', () => {
+    const mockMenuItems = [
+      { label: 'home' },
+      { label: 'Application Reports', children: [{ label: 'Cobalt Volume RESO' }] },
+      { label: 'Regulatory reporting', children: [] },
+    ];
 
-    // Act
-    component.setMonthAndYearStartDate(normalizedMonthAndYear, datepicker);
+    const mockUserInfo = { isSgGroupUser: true };
 
-    // Assert
-    const startDateValue = component.form.controls['startDate'].value;
-    expect(startDateValue.month()).toBe(9); // October is month 9 (0-indexed)
-    expect(startDateValue.year()).toBe(2023);
-    expect(datepicker.close).toHaveBeenCalled();
+    menuServiceMock.get.and.returnValue(of(mockMenuItems));
+    authServiceMock.fetchUserinfo.and.returnValue(of(mockUserInfo));
+    authServiceMock.hasUserPermission.and.callFake((userInfo, permission) => permission === 'api.bdf-bigban.volumereso.read.all');
+
+    component.ngOnInit();
+
+    expect(authServiceMock.hasUserPermission).toHaveBeenCalledWith(mockUserInfo, 'api.bdf-bigban.volumereso.read.all');
+    expect(component.menuItems.length).toBeGreaterThan(0);
+    expect(component.menuItems[1].children.length).toBe(1);
+  });
+
+  it('should handle error during menu retrieval', () => {
+    spyOn(console, 'error');
+    menuServiceMock.get.and.returnValue(throwError('Menu retrieval error'));
+
+    component.ngOnInit();
+
+    expect(console.error).toHaveBeenCalledWith('Error while retrieving Menu', 'Menu retrieval error');
+  });
+
+  it('should handle error during user info retrieval', () => {
+    spyOn(console, 'error');
+    const mockMenuItems = [{ label: 'home' }];
+
+    menuServiceMock.get.and.returnValue(of(mockMenuItems));
+    authServiceMock.fetchUserinfo.and.returnValue(throwError('User info error'));
+
+    component.ngOnInit();
+
+    expect(console.error).toHaveBeenCalledWith('Error while retrieving User Permission', 'User info error');
+  });
+
+  it('should set final menu items based on permissions and children count', () => {
+    const mockMenuItems = [
+      { label: 'home' },
+      { label: 'Application Reports', children: [{ label: 'Cobalt Volume RESO' }] },
+      { label: 'Regulatory reporting', children: [] },
+    ];
+
+    const mockUserInfo = { isSgGroupUser: true };
+
+    menuServiceMock.get.and.returnValue(of(mockMenuItems));
+    authServiceMock.fetchUserinfo.and.returnValue(of(mockUserInfo));
+    authServiceMock.hasUserPermission.and.callFake((userInfo, permission) => permission.includes('read.all'));
+
+    component.ngOnInit();
+
+    expect(component.menuItems).toEqual([
+      { label: 'home' },
+      { label: 'Application Reports', children: [{ label: 'Cobalt Volume RESO' }] },
+    ]);
   });
 });
